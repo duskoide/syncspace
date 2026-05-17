@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -77,6 +78,19 @@ type wikiResponse struct {
 	Extract string `json:"extract"`
 }
 
+type UpstreamError struct {
+	Message string
+}
+
+func (e *UpstreamError) Error() string {
+	return e.Message
+}
+
+func IsUpstreamError(err error) bool {
+	var upstreamErr *UpstreamError
+	return errors.As(err, &upstreamErr)
+}
+
 func (s *Service) WikiSummary(ctx context.Context, topic string) (string, error) {
 	topic = strings.TrimSpace(topic)
 	if topic == "" {
@@ -85,21 +99,23 @@ func (s *Service) WikiSummary(ctx context.Context, topic string) (string, error)
 	u := "https://en.wikipedia.org/api/rest_v1/page/summary/" + url.PathEscape(topic)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "SyncSpaceEdu/1.0 (II2210 assignment project; contact: admin@syncspace.local)")
+	req.Header.Set("Api-User-Agent", "SyncSpaceEdu/1.0 (II2210 assignment project; contact: admin@syncspace.local)")
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return "", err
+		return "", &UpstreamError{Message: fmt.Sprintf("wikipedia request failed: %v", err)}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
-		return "", fmt.Errorf("wikipedia error: %s", strings.TrimSpace(string(b)))
+		return "", &UpstreamError{Message: fmt.Sprintf("wikipedia error: %s", strings.TrimSpace(string(b)))}
 	}
 	var out wikiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-		return "", err
+		return "", &UpstreamError{Message: fmt.Sprintf("wikipedia decode failed: %v", err)}
 	}
 	if strings.TrimSpace(out.Extract) == "" {
-		return "", fmt.Errorf("no summary found")
+		return "", &UpstreamError{Message: "no summary found"}
 	}
 	return out.Extract, nil
 }

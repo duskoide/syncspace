@@ -16,7 +16,7 @@ Default env:
 
 ## C. aaPanel target mapping
 - Backend app route: `http://127.0.0.1:8080`
-- Frontend app route: `http://127.0.0.1:5173` or built static files via aaPanel site root
+- Frontend app route: `http://127.0.0.1:5173` or built static files from `frontend/build` via aaPanel site root
 
 ## D. Security steps (per assignment)
 Run `sudo bt` and configure:

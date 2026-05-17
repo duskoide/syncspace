@@ -233,6 +233,10 @@ func (h *Handler) wikiSummary(w http.ResponseWriter, r *http.Request) {
 	topic := r.URL.Query().Get("topic")
 	summary, err := h.svc.WikiSummary(r.Context(), topic)
 	if err != nil {
+		if service.IsUpstreamError(err) {
+			writeError(w, 502, "upstream_error", err.Error())
+			return
+		}
 		writeError(w, 400, "bad_request", err.Error())
 		return
 	}
@@ -262,6 +266,10 @@ func (h *Handler) enrichNote(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			writeError(w, 404, "not_found", "note not found")
+			return
+		}
+		if service.IsUpstreamError(err) {
+			writeError(w, 502, "upstream_error", err.Error())
 			return
 		}
 		writeError(w, 400, "bad_request", err.Error())

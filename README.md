@@ -45,6 +45,8 @@ npm install
 npm run build
 ```
 
+The production frontend output is written to `frontend/build`.
+
 ## Core Endpoints
 - `GET /health`
 - `GET/POST /api/tasks`
