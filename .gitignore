@@ -1,0 +1,27 @@
+# OS / editor
+.DS_Store
+*.swp
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+
+# Backend build artifacts
+backend/bin/
+
+# Runtime / panel generated
+.user.ini
+frontend/.user.ini
+
+# Local data
+data/*.db
+data/*.db-*
+
+# Logs
+*.log
