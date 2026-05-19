@@ -4,4 +4,7 @@ export default defineConfig({
   build: {
     outDir: "web-build",
   },
+  server: {
+    allowedHosts: ["syncspaceedu.duskoide.org"],
+  },
 });
