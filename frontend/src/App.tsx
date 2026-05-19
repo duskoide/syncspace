@@ -50,6 +50,9 @@ export function App() {
   const [taskTitle, setTaskTitle] = useState("");
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editContent, setEditContent] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const [topic, setTopic] = useState("");
   const [selectedNote, setSelectedNote] = useState<number | null>(null);
   const [wikiSummary, setWikiSummary] = useState("");
@@ -66,11 +69,13 @@ export function App() {
       setNotes(n);
       setSelectedNote((current) => {
         if (!n.length) {
+          setIsEditing(false);
           return null;
         }
         if (current !== null && n.some((note) => note.id === current)) {
           return current;
         }
+        setIsEditing(false);
         return n[0].id;
       });
     } catch (e) {
@@ -144,6 +149,33 @@ export function App() {
     try {
       setWorking(`delete-note-${id}`);
       await req<void>(`/api/notes/${id}`, { method: "DELETE" });
+      if (selectedNote === id) setIsEditing(false);
+      await load();
+    } catch (e) {
+      setError(getErrorMessage(e));
+    } finally {
+      setWorking("");
+    }
+  };
+
+  const startEditing = () => {
+    const note = notes.find((n) => n.id === selectedNote);
+    if (note) {
+      setEditTitle(note.title);
+      setEditContent(note.content);
+      setIsEditing(true);
+    }
+  };
+
+  const saveEdit = async () => {
+    if (!selectedNote || !selectedNoteData) return;
+    try {
+      setWorking("edit");
+      await req<Note>(`/api/notes/${selectedNote}`, {
+        method: "PUT",
+        body: JSON.stringify({ ...selectedNoteData, title: editTitle, content: editContent }),
+      });
+      setIsEditing(false);
       await load();
     } catch (e) {
       setError(getErrorMessage(e));
@@ -265,7 +297,10 @@ export function App() {
                   <input
                     type="radio"
                     checked={selectedNote === note.id}
-                    onChange={() => setSelectedNote(note.id)}
+                    onChange={() => {
+                      setSelectedNote(note.id);
+                      setIsEditing(false);
+                    }}
                   />
                   <span>
                     <strong>{note.title}</strong>
@@ -307,13 +342,46 @@ export function App() {
 
         <section className="card focusCard">
           <div className="sectionHead">
-            <div>
+            <div style={{ flex: 1 }}>
               <p className="sectionTag">Selected Note</p>
-              <h2>{selectedNoteData?.title || "Nothing selected"}</h2>
+              {isEditing ? (
+                <input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="Note title"
+                  required
+                />
+              ) : (
+                <h2>{selectedNoteData?.title || "Nothing selected"}</h2>
+              )}
             </div>
+            {selectedNoteData && !isEditing && (
+              <button className="ghost" onClick={startEditing}>
+                Edit Note
+              </button>
+            )}
           </div>
-          <div className="notePreview">
-            {selectedNoteData ? selectedNoteData.content || "This note is empty." : "Choose a note from the notebook to preview it here."}
+          <div className={isEditing ? "stack" : "notePreview"}>
+            {isEditing ? (
+              <>
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  placeholder="Note content"
+                  rows={10}
+                />
+                <div className="actions">
+                  <button onClick={saveEdit} disabled={working === "edit"}>
+                    {working === "edit" ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button className="ghost" onClick={() => setIsEditing(false)} disabled={working === "edit"}>
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              selectedNoteData ? selectedNoteData.content || "This note is empty." : "Choose a note from the notebook to preview it here."
+            )}
           </div>
         </section>
       </section>
