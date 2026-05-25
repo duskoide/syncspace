@@ -6,7 +6,7 @@ type User struct {
 	ID           int64     `json:"id"`
 	Email        string    `json:"email"`
 	Name         string    `json:"name"`
-	Role         string    `json:"role"`    // superadmin, teacher, student
+	Role         string    `json:"role"`    // superadmin, moderator, collaborator
 	Status       string    `json:"status"`  // pending, active, suspended
 	PasswordHash string    `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
@@ -22,7 +22,7 @@ type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Name     string `json:"name"`
-	Role     string `json:"role"` // teacher or student
+	Role     string `json:"role"` // moderator or collaborator
 }
 
 type TokenPair struct {
