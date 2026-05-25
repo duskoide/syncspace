@@ -9,10 +9,19 @@ class ApiError extends Error {
 async function request(path: string, options: RequestInit = {}) {
   const url = `${API_BASE}${path}`;
   const token = localStorage.getItem("token");
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...((options.headers as Record<string, string>) || {}),
-  };
+  const headers: Record<string, string> = {};
+  
+  // Only set Content-Type if not FormData (browser will set it automatically for FormData)
+  const isFormData = options.body instanceof FormData;
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
+  
+  // Merge with provided headers
+  if (options.headers) {
+    Object.assign(headers, options.headers as Record<string, string>);
+  }
+  
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
