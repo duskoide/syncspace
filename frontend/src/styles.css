@@ -998,3 +998,79 @@ button.active {
   background: rgba(255, 255, 255, 0.2);
   border-radius: 3px;
 }
+
+/* Image Gallery */
+.imageGallery {
+  width: 100%;
+}
+
+.imageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.imageCard {
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.imageCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.galleryImage {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+}
+
+.imageMeta {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.imageName {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #f3efe6;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.imageAuthor {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+/* Button style for labels */
+.button {
+  padding: 12px 18px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: #1d1608;
+  font-weight: 700;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
+  box-shadow: 0 10px 24px rgba(216, 139, 28, 0.28);
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.button:disabled,
+.button[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+  transform: none;
+}

@@ -69,15 +69,15 @@ export const api = {
   getBoardMembers: (id: number) =>
     request(`/api/boards/${id}/members`),
 
-  // Text Elements (sticky notes on whiteboard)
-  listTextElements: (boardId: number) =>
-    request(`/api/boards/${boardId}/text-elements`),
-  createTextElement: (data: { board_id: number; content: string; x: number; y: number; color?: string }) =>
-    request("/api/text-elements", { method: "POST", body: JSON.stringify(data) }),
-  updateTextElement: (id: number, data: { content?: string; x?: number; y?: number; color?: string }) =>
-    request(`/api/text-elements/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deleteTextElement: (id: number) =>
-    request(`/api/text-elements/${id}`, { method: "DELETE" }),
+  // Board Images
+  listBoardImages: (boardId: number) =>
+    request(`/api/boards/${boardId}/images`),
+  uploadBoardImage: (boardId: number, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("board_id", String(boardId));
+    return request("/api/upload", { method: "POST", body: form, headers: {} });
+  },
 
   // Discussions (board_id instead of classroom_id)
   listDiscussions: (boardId: number) =>

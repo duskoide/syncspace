@@ -31,7 +31,7 @@ var allowedMimeTypes = map[string]bool{
 	"application/vnd.openxmlformats-officedocument.presentationml.presentation": true,
 }
 
-func (s *Service) UploadFile(ctx context.Context, uploadedBy int64, file multipart.File, header *multipart.FileHeader) (models.Attachment, error) {
+func (s *Service) UploadFile(ctx context.Context, uploadedBy int64, boardID *int64, file multipart.File, header *multipart.FileHeader) (models.Attachment, error) {
 	if header.Size > maxFileSize {
 		return models.Attachment{}, fmt.Errorf("file size exceeds 10MB limit")
 	}
@@ -70,6 +70,7 @@ func (s *Service) UploadFile(ctx context.Context, uploadedBy int64, file multipa
 	}
 
 	att := models.Attachment{
+		BoardID:      boardID,
 		Filename:     filename,
 		OriginalName: header.Filename,
 		MimeType:     mimeType,
@@ -83,6 +84,10 @@ func (s *Service) UploadFile(ctx context.Context, uploadedBy int64, file multipa
 
 func (s *Service) GetAttachment(ctx context.Context, id int64) (models.Attachment, error) {
 	return s.store.GetAttachment(ctx, id)
+}
+
+func (s *Service) ListAttachmentsByBoard(ctx context.Context, boardID int64) ([]models.Attachment, error) {
+	return s.store.ListAttachmentsByBoard(ctx, boardID)
 }
 
 func (s *Service) DeleteAttachment(ctx context.Context, userID, id int64) error {

@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
-import { useWebSocket } from "../hooks/useWebSocket";
 
 interface Board {
   id: number;
@@ -13,17 +12,16 @@ interface Board {
   created_at: string;
 }
 
-interface TextElement {
+interface BoardImage {
   id: number;
   board_id: number;
-  user_id: number;
+  filename: string;
+  original_name: string;
+  mime_type: string;
+  file_size: number;
+  uploaded_by: number;
   user_name: string;
-  content: string;
-  x: number;
-  y: number;
-  color: string;
   created_at: string;
-  updated_at: string;
 }
 
 interface Discussion {
@@ -41,70 +39,28 @@ interface Member {
   status: string;
 }
 
-const NOTE_COLORS = [
-  { bg: "#fef3c7", border: "#f59e0b", text: "#92400e" }, // yellow
-  { bg: "#dbeafe", border: "#3b82f6", text: "#1e40af" }, // blue
-  { bg: "#d1fae5", border: "#10b981", text: "#065f46" }, // green
-  { bg: "#fce7f3", border: "#ec4899", text: "#9d174d" }, // pink
-  { bg: "#e0e7ff", border: "#6366f1", text: "#3730a3" }, // indigo
-  { bg: "#fed7d7", border: "#f56565", text: "#742a2a" }, // red
-];
-
 export function BoardPage() {
   const { user } = useAuth();
   const [boards, setBoards] = useState<Board[]>([]);
   const [selected, setSelected] = useState<Board | null>(null);
-  const [textElements, setTextElements] = useState<TextElement[]>([]);
+  const [images, setImages] = useState<BoardImage[]>([]);
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [showCreate, setShowCreate] = useState(false);
   const [newBoard, setNewBoard] = useState({ name: "", description: "", visibility: "public" });
   const [newDiscussion, setNewDiscussion] = useState("");
   const [loading, setLoading] = useState(true);
-  const [editingNote, setEditingNote] = useState<number | null>(null);
+  const [uploading, setUploading] = useState(false);
   
   // Wiki search state
   const [wikiQuery, setWikiQuery] = useState("");
   const [wikiResult, setWikiResult] = useState<{ topic: string; summary: string } | null>(null);
   const [wikiLoading, setWikiLoading] = useState(false);
   const [wikiError, setWikiError] = useState("");
-  const [editContent, setEditContent] = useState("");
-  const [isAddingNote, setIsAddingNote] = useState(false);
-  const [draggingNote, setDraggingNote] = useState<number | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const canvasRef = useRef<HTMLDivElement>(null);
-
-  const wsRoom = selected ? `board_${selected.id}` : null;
-  const { messages: wsMessages, connected: wsConnected, sendMessage: sendWsMessage } = useWebSocket(wsRoom);
 
   useEffect(() => {
     loadBoards();
   }, []);
-
-  useEffect(() => {
-    // Handle WebSocket messages for real-time updates
-    wsMessages.forEach((msg) => {
-      if (msg.type === "text_element_created") {
-        setTextElements((prev) => {
-          const exists = prev.find((te) => te.id === msg.data.id);
-          if (exists) return prev;
-          return [...prev, msg.data];
-        });
-      } else if (msg.type === "text_element_updated") {
-        setTextElements((prev) =>
-          prev.map((te) => (te.id === msg.data.id ? { ...te, ...msg.data } : te))
-        );
-      } else if (msg.type === "text_element_deleted") {
-        setTextElements((prev) => prev.filter((te) => te.id !== msg.data.id));
-      } else if (msg.type === "chat_message") {
-        setDiscussions((prev) => {
-          const exists = prev.find((d) => d.id === msg.data.id);
-          if (exists) return prev;
-          return [msg.data, ...prev];
-        });
-      }
-    });
-  }, [wsMessages]);
 
   const loadBoards = async () => {
     setLoading(true);
@@ -121,12 +77,12 @@ export function BoardPage() {
   const selectBoard = async (b: Board) => {
     setSelected(b);
     try {
-      const [elements, discs, mems] = await Promise.all([
-        api.listTextElements(b.id),
+      const [imgs, discs, mems] = await Promise.all([
+        api.listBoardImages(b.id),
         api.listDiscussions(b.id),
         api.getBoardMembers(b.id),
       ]);
-      setTextElements(elements);
+      setImages(imgs);
       setDiscussions(discs);
       setMembers(mems);
     } catch (err) {
@@ -153,7 +109,6 @@ export function BoardPage() {
       const disc = await api.createDiscussion({ board_id: selected.id, message: newDiscussion });
       setNewDiscussion("");
       setDiscussions((prev) => [disc, ...prev]);
-      sendWsMessage("chat_message", { message: newDiscussion, discussion_id: disc.id });
     } catch (err: any) {
       alert(err.message);
     }
@@ -162,10 +117,37 @@ export function BoardPage() {
   const joinBoard = async (boardId: number) => {
     try {
       await api.joinBoard(boardId);
-      alert("Join request sent! Waiting for moderator approval.");
+      alert("Successfully joined the board!");
       loadBoards();
+      if (selected?.id === boardId) {
+        selectBoard(selected);
+      }
     } catch (err: any) {
       alert(err.message);
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selected) return;
+    
+    // Only allow images
+    if (!file.type.startsWith("image/")) {
+      alert("Please upload an image file");
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      await api.uploadBoardImage(selected.id, file);
+      // Refresh images
+      const imgs = await api.listBoardImages(selected.id);
+      setImages(imgs);
+      e.target.value = ""; // Reset input
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -187,141 +169,8 @@ export function BoardPage() {
     }
   };
 
-  const createNoteFromWiki = () => {
-    if (!wikiResult || !selected) return;
-    
-    const canvas = canvasRef.current;
-    const centerX = canvas ? canvas.clientWidth / 2 - 100 : 100;
-    const centerY = canvas ? canvas.clientHeight / 2 - 75 : 100;
-    
-    const randomColor = NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)];
-    
-    api.createTextElement({
-      board_id: selected.id,
-      content: `[${wikiResult.topic}]\n${wikiResult.summary}`,
-      x: centerX,
-      y: centerY,
-      color: randomColor.bg,
-    }).then((newElement) => {
-      setTextElements((prev) => [...prev, newElement]);
-      sendWsMessage("text_element_created", newElement);
-    }).catch((err: any) => {
-      alert(err.message);
-    });
-  };
-
-  const handleCanvasClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!isAddingNote || !selected || !canvasRef.current) return;
-    
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const randomColor = NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)];
-    
-    try {
-      const newElement = await api.createTextElement({
-        board_id: selected.id,
-        content: "New note",
-        x,
-        y,
-        color: randomColor.bg,
-      });
-      setTextElements((prev) => [...prev, newElement]);
-      sendWsMessage("text_element_created", newElement);
-      setIsAddingNote(false);
-      setEditingNote(newElement.id);
-      setEditContent("New note");
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
-
-  const updateNotePosition = async (id: number, x: number, y: number) => {
-    try {
-      await api.updateTextElement(id, { x, y });
-      setTextElements((prev) =>
-        prev.map((te) => (te.id === id ? { ...te, x, y } : te))
-      );
-      sendWsMessage("text_element_updated", { id, x, y });
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const updateNoteContent = async (id: number) => {
-    if (!editContent.trim()) return;
-    try {
-      await api.updateTextElement(id, { content: editContent });
-      setTextElements((prev) =>
-        prev.map((te) => (te.id === id ? { ...te, content: editContent } : te))
-      );
-      sendWsMessage("text_element_updated", { id, content: editContent });
-      setEditingNote(null);
-      setEditContent("");
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const deleteNote = async (id: number) => {
-    try {
-      await api.deleteTextElement(id);
-      setTextElements((prev) => prev.filter((te) => te.id !== id));
-      sendWsMessage("text_element_deleted", { id });
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleMouseDown = (e: React.MouseEvent, noteId: number) => {
-    e.stopPropagation();
-    const note = textElements.find((te) => te.id === noteId);
-    if (!note) return;
-    
-    setDraggingNote(noteId);
-    setDragOffset({
-      x: e.clientX - note.x,
-      y: e.clientY - note.y,
-    });
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (draggingNote === null) return;
-    
-    const newX = e.clientX - dragOffset.x;
-    const newY = e.clientY - dragOffset.y;
-    
-    setTextElements((prev) =>
-      prev.map((te) =>
-        te.id === draggingNote ? { ...te, x: newX, y: newY } : te
-      )
-    );
-  }, [draggingNote, dragOffset]);
-
-  const handleMouseUp = useCallback(() => {
-    if (draggingNote !== null) {
-      const note = textElements.find((te) => te.id === draggingNote);
-      if (note) {
-        updateNotePosition(draggingNote, note.x, note.y);
-      }
-      setDraggingNote(null);
-    }
-  }, [draggingNote, textElements]);
-
-  useEffect(() => {
-    if (draggingNote !== null) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-      return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
-      };
-    }
-  }, [draggingNote, handleMouseMove, handleMouseUp]);
-
   const isModerator = selected?.moderator_id === user?.id;
-  const isCollaborator = user?.role === "collaborator" || user?.role === "moderator";
+  const isCollaborator = user?.role === "collaborator" || user?.role === "moderator" || user?.role === "superadmin";
 
   if (loading) return <div style={{ padding: 24 }}>Loading...</div>;
 
@@ -432,109 +281,71 @@ export function BoardPage() {
                     </p>
                   </div>
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <span
-                      style={{
-                        fontSize: 12,
-                        color: wsConnected ? "#9ce4c8" : "#ffd2cf",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <span style={{ fontSize: 10 }}>●</span> {wsConnected ? "Live" : "Offline"}
-                    </span>
-                    {isCollaborator && (
-                      <button
-                        onClick={() => setIsAddingNote(!isAddingNote)}
-                        className={isAddingNote ? "active" : ""}
-                      >
-                        {isAddingNote ? "Click to Place" : "Add Note"}
-                      </button>
-                    )}
-                    {user?.role === "collaborator" && (
-                      <button onClick={() => joinBoard(selected.id)}>Join</button>
+                    {!members.find(m => m.user_id === user?.id) && user?.role !== "superadmin" && (
+                      <button onClick={() => joinBoard(selected.id)}>Join Board</button>
                     )}
                   </div>
                 </div>
               </div>
 
-              <div className="whiteboardContainer">
-                <div
-                  ref={canvasRef}
-                  className={`whiteboardCanvas ${isAddingNote ? "adding" : ""}`}
-                  onClick={handleCanvasClick}
-                >
-                  {textElements.map((element) => {
-                    const color = NOTE_COLORS.find((c) => c.bg === element.color) || NOTE_COLORS[0];
-                    const isEditing = editingNote === element.id;
-
-                    return (
-                      <div
-                        key={element.id}
-                        className={`stickyNote ${draggingNote === element.id ? "dragging" : ""}`}
-                        style={{
-                          left: element.x,
-                          top: element.y,
-                          backgroundColor: color.bg,
-                          borderColor: color.border,
-                          color: color.text,
-                        }}
-                        onMouseDown={(e) => !isEditing && handleMouseDown(e, element.id)}
-                        onDoubleClick={() => {
-                          setEditingNote(element.id);
-                          setEditContent(element.content);
-                        }}
-                      >
-                        <button
-                          className="deleteNoteBtn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteNote(element.id);
-                          }}
-                          title="Delete note"
-                        >
-                          ×
-                        </button>
-                        
-                        {isEditing ? (
-                          <textarea
-                            autoFocus
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            onBlur={() => updateNoteContent(element.id)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                updateNoteContent(element.id);
-                              }
-                              if (e.key === "Escape") {
-                                setEditingNote(null);
-                                setEditContent("");
-                              }
+              {/* Image Upload Section */}
+              <div className="card">
+                <div className="sectionTitleRow">
+                  <div>
+                    <p className="eyebrow">Gallery</p>
+                    <h3>Images</h3>
+                  </div>
+                  {isCollaborator && (
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        style={{ display: "none" }}
+                        id="image-upload"
+                        disabled={uploading}
+                      />
+                      <label htmlFor="image-upload" style={{ cursor: "pointer" }}>
+                        <span className="button" style={{ display: "inline-block" }}>
+                          {uploading ? "Uploading..." : "Upload Image"}
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="imageGallery" style={{ marginTop: 16 }}>
+                  {images.length === 0 ? (
+                    <div className="emptyState">
+                      <p className="muted">No images yet. Upload some images to share!</p>
+                    </div>
+                  ) : (
+                    <div className="imageGrid">
+                      {images.map((img) => (
+                        <div key={img.id} className="imageCard">
+                          <img 
+                            src={`${import.meta.env.VITE_API_URL || ""}/uploads/${img.filename}`}
+                            alt={img.original_name}
+                            className="galleryImage"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "";
+                              (e.target as HTMLImageElement).style.display = "none";
                             }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="noteEditArea"
-                            style={{ color: color.text }}
                           />
-                        ) : (
-                          <div className="noteContent">
-                            <p>{element.content}</p>
-                            <span className="noteAuthor">by {element.user_name}</span>
+                          <div className="imageMeta">
+                            <span className="imageName" title={img.original_name}>
+                              {img.original_name}
+                            </span>
+                            <span className="imageAuthor">by {img.user_name}</span>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  
-                  {textElements.length === 0 && (
-                    <div className="canvasEmptyState">
-                      <p>This board is empty.</p>
-                      <p className="muted">Click "Add Note" to start collaborating!</p>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* Wiki Research Section */}
               <div className="card">
                 <p className="eyebrow">Research</p>
                 <form onSubmit={searchWikipedia} className="stack" style={{ marginTop: 12 }}>
@@ -566,9 +377,6 @@ export function BoardPage() {
                     </div>
                     <p className="wikiContent">{wikiResult.summary}</p>
                     <div className="actions" style={{ marginTop: 12 }}>
-                      <button onClick={createNoteFromWiki}>
-                        Add to Board
-                      </button>
                       <button className="ghost" onClick={() => setWikiResult(null)}>
                         Clear
                       </button>
@@ -578,23 +386,30 @@ export function BoardPage() {
                 
                 {!wikiResult && !wikiError && !wikiLoading && (
                   <div className="emptyState" style={{ padding: "20px 0" }}>
-                    <p className="muted">Search Wikipedia to research topics and add findings to your board.</p>
+                    <p className="muted">Search Wikipedia to research topics for your board.</p>
                   </div>
                 )}
               </div>
 
+              {/* Discussion Section */}
               <div className="card">
                 <p className="eyebrow">Discussion</p>
-                <form onSubmit={createDiscussion} className="stack" style={{ marginTop: 12 }}>
-                  <textarea
-                    placeholder="Write a message..."
-                    value={newDiscussion}
-                    onChange={(e) => setNewDiscussion(e.target.value)}
-                    required
-                    style={{ minHeight: 80 }}
-                  />
-                  <button type="submit">Post Message</button>
-                </form>
+                {members.find(m => m.user_id === user?.id) || user?.role === "superadmin" ? (
+                  <form onSubmit={createDiscussion} className="stack" style={{ marginTop: 12 }}>
+                    <textarea
+                      placeholder="Write a message..."
+                      value={newDiscussion}
+                      onChange={(e) => setNewDiscussion(e.target.value)}
+                      required
+                      style={{ minHeight: 80 }}
+                    />
+                    <button type="submit">Post Message</button>
+                  </form>
+                ) : (
+                  <div className="emptyState">
+                    <p className="muted">Join this board to participate in discussions.</p>
+                  </div>
+                )}
               </div>
 
               <div className="discussionStack">

@@ -68,12 +68,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	authMux.HandleFunc("PUT /api/memberships/{id}/role", h.updateMemberRole)
 	authMux.HandleFunc("DELETE /api/boards/{id}/members/{member_id}", h.removeMember)
 
-	// TextElement routes
-	authMux.HandleFunc("POST /api/text-elements", h.createTextElement)
-	authMux.HandleFunc("GET /api/text-elements", h.listTextElements)
-	authMux.HandleFunc("GET /api/text-elements/", h.handleTextElement)
-	authMux.HandleFunc("PUT /api/text-elements/", h.handleTextElement)
-	authMux.HandleFunc("DELETE /api/text-elements/", h.handleTextElement)
+	// Board Image routes
+	authMux.HandleFunc("GET /api/boards/{id}/images", h.listBoardImages)
 
 	// Discussion routes
 	authMux.HandleFunc("POST /api/discussions", h.createDiscussion)
@@ -105,8 +101,6 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.Handle("/api/boards", AuthMiddleware(authMux))
 	mux.Handle("/api/boards/", AuthMiddleware(authMux))
 	mux.Handle("/api/memberships/", AuthMiddleware(authMux))
-	mux.Handle("/api/text-elements", AuthMiddleware(authMux))
-	mux.Handle("/api/text-elements/", AuthMiddleware(authMux))
 	mux.Handle("/api/discussions", AuthMiddleware(authMux))
 	mux.Handle("/api/discussions/", AuthMiddleware(authMux))
 	mux.Handle("/api/upload", AuthMiddleware(authMux))
@@ -163,19 +157,6 @@ func (h *Handler) handleBoard(w http.ResponseWriter, r *http.Request) {
 		h.updateBoard(w, r)
 	case http.MethodDelete:
 		h.deleteBoard(w, r)
-	default:
-		writeError(w, 405, "method_not_allowed", "method not allowed")
-	}
-}
-
-func (h *Handler) handleTextElement(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.getTextElement(w, r)
-	case http.MethodPut:
-		h.updateTextElement(w, r)
-	case http.MethodDelete:
-		h.deleteTextElement(w, r)
 	default:
 		writeError(w, 405, "method_not_allowed", "method not allowed")
 	}

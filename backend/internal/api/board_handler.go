@@ -181,90 +181,21 @@ func (h *Handler) removeMember(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(204)
 }
 
-// TextElement handlers
+// Board Image handlers
 
-func (h *Handler) createTextElement(w http.ResponseWriter, r *http.Request) {
-	var req models.TextElement
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, 400, "bad_request", "invalid json")
-		return
-	}
-	claims := GetUserFromContext(r.Context())
-	out, err := h.svc.CreateTextElement(r.Context(), claims.UserID, req)
+func (h *Handler) listBoardImages(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	boardID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		writeError(w, 400, "validation_error", err.Error())
+		writeError(w, 400, "bad_request", "invalid board id")
 		return
 	}
-	writeJSON(w, 201, out)
-}
-
-func (h *Handler) listTextElements(w http.ResponseWriter, r *http.Request) {
-	boardIDStr := r.URL.Query().Get("board_id")
-	if boardIDStr == "" {
-		writeError(w, 400, "bad_request", "board_id is required")
-		return
-	}
-	boardID, err := strconv.ParseInt(boardIDStr, 10, 64)
-	if err != nil {
-		writeError(w, 400, "bad_request", "invalid board_id")
-		return
-	}
-	claims := GetUserFromContext(r.Context())
-	out, err := h.svc.ListTextElementsByBoard(r.Context(), claims.UserID, boardID)
+	out, err := h.svc.ListAttachmentsByBoard(r.Context(), boardID)
 	if err != nil {
 		writeError(w, 400, "validation_error", err.Error())
 		return
 	}
 	writeJSON(w, 200, out)
-}
-
-func (h *Handler) getTextElement(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(r.URL.Path, "/api/text-elements/")
-	if !ok {
-		writeError(w, 400, "bad_request", "invalid id")
-		return
-	}
-	claims := GetUserFromContext(r.Context())
-	out, err := h.svc.GetTextElement(r.Context(), claims.UserID, id)
-	if err != nil {
-		writeError(w, 404, "not_found", "text element not found")
-		return
-	}
-	writeJSON(w, 200, out)
-}
-
-func (h *Handler) updateTextElement(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(r.URL.Path, "/api/text-elements/")
-	if !ok {
-		writeError(w, 400, "bad_request", "invalid id")
-		return
-	}
-	var req models.TextElement
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, 400, "bad_request", "invalid json")
-		return
-	}
-	claims := GetUserFromContext(r.Context())
-	out, err := h.svc.UpdateTextElement(r.Context(), claims.UserID, id, req)
-	if err != nil {
-		writeError(w, 400, "validation_error", err.Error())
-		return
-	}
-	writeJSON(w, 200, out)
-}
-
-func (h *Handler) deleteTextElement(w http.ResponseWriter, r *http.Request) {
-	id, ok := parseID(r.URL.Path, "/api/text-elements/")
-	if !ok {
-		writeError(w, 400, "bad_request", "invalid id")
-		return
-	}
-	claims := GetUserFromContext(r.Context())
-	if err := h.svc.DeleteTextElement(r.Context(), claims.UserID, id); err != nil {
-		writeError(w, 400, "validation_error", err.Error())
-		return
-	}
-	w.WriteHeader(204)
 }
 
 // Discussion handlers

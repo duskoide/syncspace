@@ -131,6 +131,7 @@ CREATE INDEX IF NOT EXISTS idx_discussions_board ON discussions(board_id);
 
 CREATE TABLE IF NOT EXISTS attachments (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	board_id INTEGER REFERENCES boards(id) ON DELETE CASCADE,
 	filename TEXT NOT NULL,
 	original_name TEXT NOT NULL,
 	mime_type TEXT NOT NULL,
@@ -139,6 +140,7 @@ CREATE TABLE IF NOT EXISTS attachments (
 	uploaded_by INTEGER NOT NULL REFERENCES users(id),
 	created_at TEXT NOT NULL
 );
+CREATE INDEX IF NOT EXISTS idx_attachments_board ON attachments(board_id);
 CREATE INDEX IF NOT EXISTS idx_attachments_uploaded_by ON attachments(uploaded_by);
 
 -- Legacy tables for backward compatibility (kept but not used)
@@ -624,8 +626,8 @@ func (s *Store) DeleteDiscussion(ctx context.Context, id int64) error {
 func (s *Store) CreateAttachment(ctx context.Context, a models.Attachment) (models.Attachment, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO attachments(filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at) VALUES(?, ?, ?, ?, ?, ?, ?)`,
-		a.Filename, a.OriginalName, a.MimeType, a.FileSize, a.FilePath, a.UploadedBy, now)
+		`INSERT INTO attachments(board_id, filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
+		a.BoardID, a.Filename, a.OriginalName, a.MimeType, a.FileSize, a.FilePath, a.UploadedBy, now)
 	if err != nil {
 		return models.Attachment{}, err
 	}
@@ -636,14 +638,47 @@ func (s *Store) CreateAttachment(ctx context.Context, a models.Attachment) (mode
 func (s *Store) GetAttachment(ctx context.Context, id int64) (models.Attachment, error) {
 	var a models.Attachment
 	var c string
+	var bid sql.NullInt64
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at FROM attachments WHERE id = ?`, id).
-		Scan(&a.ID, &a.Filename, &a.OriginalName, &a.MimeType, &a.FileSize, &a.FilePath, &a.UploadedBy, &c)
+		`SELECT id, board_id, filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at FROM attachments WHERE id = ?`, id).
+		Scan(&a.ID, &bid, &a.Filename, &a.OriginalName, &a.MimeType, &a.FileSize, &a.FilePath, &a.UploadedBy, &c)
 	if err != nil {
 		return a, err
 	}
+	if bid.Valid {
+		a.BoardID = &bid.Int64
+	}
 	a.CreatedAt, _ = time.Parse(time.RFC3339, c)
 	return a, nil
+}
+
+func (s *Store) ListAttachmentsByBoard(ctx context.Context, boardID int64) ([]models.Attachment, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT a.id, a.board_id, a.filename, a.original_name, a.mime_type, a.file_size, a.file_path, a.uploaded_by, u.name, a.created_at 
+		 FROM attachments a 
+		 JOIN users u ON a.uploaded_by = u.id 
+		 WHERE a.board_id = ? 
+		 ORDER BY a.created_at DESC`, boardID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []models.Attachment{}
+	for rows.Next() {
+		var a models.Attachment
+		var c string
+		var bid sql.NullInt64
+		if err := rows.Scan(&a.ID, &bid, &a.Filename, &a.OriginalName, &a.MimeType, &a.FileSize, &a.FilePath, &a.UploadedBy, &a.UserName, &c); err != nil {
+			return nil, err
+		}
+		if bid.Valid {
+			a.BoardID = &bid.Int64
+		}
+		a.CreatedAt, _ = time.Parse(time.RFC3339, c)
+		out = append(out, a)
+	}
+	return out, rows.Err()
 }
 
 func (s *Store) DeleteAttachment(ctx context.Context, id int64) error {

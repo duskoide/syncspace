@@ -49,11 +49,13 @@ type Discussion struct {
 
 type Attachment struct {
 	ID           int64     `json:"id"`
+	BoardID      *int64    `json:"board_id,omitempty"`
 	Filename     string    `json:"filename"`
 	OriginalName string    `json:"original_name"`
 	MimeType     string    `json:"mime_type"`
 	FileSize     int64     `json:"file_size"`
 	FilePath     string    `json:"-"`
 	UploadedBy   int64     `json:"uploaded_by"`
+	UserName     string    `json:"user_name,omitempty"`
 	CreatedAt    time.Time `json:"created_at"`
 }

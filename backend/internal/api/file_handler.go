@@ -21,8 +21,17 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	// Get optional board_id
+	var boardID *int64
+	if bidStr := r.FormValue("board_id"); bidStr != "" {
+		bid, err := strconv.ParseInt(bidStr, 10, 64)
+		if err == nil {
+			boardID = &bid
+		}
+	}
+
 	claims := GetUserFromContext(r.Context())
-	att, err := h.svc.UploadFile(r.Context(), claims.UserID, file, header)
+	att, err := h.svc.UploadFile(r.Context(), claims.UserID, boardID, file, header)
 	if err != nil {
 		writeError(w, 400, "validation_error", err.Error())
 		return
