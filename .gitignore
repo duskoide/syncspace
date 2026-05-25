@@ -84,3 +84,4 @@ temp/
 *.tmp
 *.bak
 *.backup
+backend/syncspace
