@@ -54,47 +54,32 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	authMux.HandleFunc("PUT /api/admin/users/", h.handleAdminUser)
 	authMux.HandleFunc("DELETE /api/admin/users/", h.handleAdminUser)
 
-	// Classroom routes
-	authMux.HandleFunc("POST /api/classrooms", h.createClassroom)
-	authMux.HandleFunc("GET /api/classrooms", h.listClassrooms)
-	authMux.HandleFunc("GET /api/classrooms/", h.handleClassroom)
-	authMux.HandleFunc("PUT /api/classrooms/", h.handleClassroom)
-	authMux.HandleFunc("DELETE /api/classrooms/", h.handleClassroom)
+	// Board routes
+	authMux.HandleFunc("POST /api/boards", h.createBoard)
+	authMux.HandleFunc("GET /api/boards", h.listBoards)
+	authMux.HandleFunc("GET /api/boards/", h.handleBoard)
+	authMux.HandleFunc("PUT /api/boards/", h.handleBoard)
+	authMux.HandleFunc("DELETE /api/boards/", h.handleBoard)
 
-	// Enrollment routes
-	authMux.HandleFunc("POST /api/classrooms/{id}/enroll", h.requestEnrollment)
-	authMux.HandleFunc("PUT /api/enrollments/{id}/approve", h.approveEnrollment)
-	authMux.HandleFunc("GET /api/classrooms/{id}/students", h.listClassroomStudents)
-	authMux.HandleFunc("DELETE /api/classrooms/{id}/students/{student_id}", h.removeStudent)
+	// Board membership routes
+	authMux.HandleFunc("POST /api/boards/{id}/join", h.joinBoard)
+	authMux.HandleFunc("DELETE /api/boards/{id}/leave", h.leaveBoard)
+	authMux.HandleFunc("GET /api/boards/{id}/members", h.listBoardMembers)
+	authMux.HandleFunc("PUT /api/memberships/{id}/role", h.updateMemberRole)
+	authMux.HandleFunc("DELETE /api/boards/{id}/members/{member_id}", h.removeMember)
 
-	// Material routes
-	authMux.HandleFunc("POST /api/materials", h.createMaterial)
-	authMux.HandleFunc("GET /api/materials", h.listMaterials)
-	authMux.HandleFunc("GET /api/materials/", h.handleMaterial)
-	authMux.HandleFunc("PUT /api/materials/", h.handleMaterial)
-	authMux.HandleFunc("DELETE /api/materials/", h.handleMaterial)
-
-	// Assignment routes
-	authMux.HandleFunc("POST /api/assignments", h.createAssignment)
-	authMux.HandleFunc("GET /api/assignments", h.listAssignments)
-	authMux.HandleFunc("GET /api/assignments/", h.handleAssignment)
-	authMux.HandleFunc("PUT /api/assignments/", h.handleAssignment)
-	authMux.HandleFunc("DELETE /api/assignments/", h.handleAssignment)
-	authMux.HandleFunc("POST /api/assignments/{id}/submissions", h.createSubmission)
-	authMux.HandleFunc("GET /api/assignments/{id}/submissions", h.listSubmissions)
-	authMux.HandleFunc("PUT /api/submissions/{id}/grade", h.gradeSubmission)
-
-	// Collaborative Note routes
-	authMux.HandleFunc("POST /api/collaborative-notes", h.createCollaborativeNote)
-	authMux.HandleFunc("GET /api/collaborative-notes", h.listCollaborativeNotes)
-	authMux.HandleFunc("GET /api/collaborative-notes/", h.handleCollaborativeNote)
-	authMux.HandleFunc("PUT /api/collaborative-notes/", h.handleCollaborativeNote)
-	authMux.HandleFunc("DELETE /api/collaborative-notes/", h.handleCollaborativeNote)
+	// TextElement routes
+	authMux.HandleFunc("POST /api/text-elements", h.createTextElement)
+	authMux.HandleFunc("GET /api/text-elements", h.listTextElements)
+	authMux.HandleFunc("GET /api/text-elements/", h.handleTextElement)
+	authMux.HandleFunc("PUT /api/text-elements/", h.handleTextElement)
+	authMux.HandleFunc("DELETE /api/text-elements/", h.handleTextElement)
 
 	// Discussion routes
 	authMux.HandleFunc("POST /api/discussions", h.createDiscussion)
 	authMux.HandleFunc("GET /api/discussions", h.listDiscussions)
 	authMux.HandleFunc("GET /api/discussions/{id}/replies", h.listDiscussionReplies)
+	authMux.HandleFunc("DELETE /api/discussions/", h.deleteDiscussion)
 
 	// File upload/download
 	authMux.HandleFunc("POST /api/upload", h.uploadFile)
@@ -117,16 +102,11 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	// Wrap auth routes with auth middleware
 	mux.Handle("/api/auth/me", AuthMiddleware(authMux))
 	mux.Handle("/api/admin/", AuthMiddleware(RequireRole("superadmin")(authMux)))
-	mux.Handle("/api/classrooms", AuthMiddleware(authMux))
-	mux.Handle("/api/classrooms/", AuthMiddleware(authMux))
-	mux.Handle("/api/enrollments/", AuthMiddleware(authMux))
-	mux.Handle("/api/materials", AuthMiddleware(authMux))
-	mux.Handle("/api/materials/", AuthMiddleware(authMux))
-	mux.Handle("/api/assignments", AuthMiddleware(authMux))
-	mux.Handle("/api/assignments/", AuthMiddleware(authMux))
-	mux.Handle("/api/submissions/", AuthMiddleware(authMux))
-	mux.Handle("/api/collaborative-notes", AuthMiddleware(authMux))
-	mux.Handle("/api/collaborative-notes/", AuthMiddleware(authMux))
+	mux.Handle("/api/boards", AuthMiddleware(authMux))
+	mux.Handle("/api/boards/", AuthMiddleware(authMux))
+	mux.Handle("/api/memberships/", AuthMiddleware(authMux))
+	mux.Handle("/api/text-elements", AuthMiddleware(authMux))
+	mux.Handle("/api/text-elements/", AuthMiddleware(authMux))
 	mux.Handle("/api/discussions", AuthMiddleware(authMux))
 	mux.Handle("/api/discussions/", AuthMiddleware(authMux))
 	mux.Handle("/api/upload", AuthMiddleware(authMux))
@@ -175,53 +155,27 @@ func (h *Handler) handleAdminUser(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h *Handler) handleClassroom(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleBoard(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		h.getClassroom(w, r)
+		h.getBoard(w, r)
 	case http.MethodPut:
-		h.updateClassroom(w, r)
+		h.updateBoard(w, r)
 	case http.MethodDelete:
-		h.deleteClassroom(w, r)
+		h.deleteBoard(w, r)
 	default:
 		writeError(w, 405, "method_not_allowed", "method not allowed")
 	}
 }
 
-func (h *Handler) handleMaterial(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) handleTextElement(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		h.getMaterial(w, r)
+		h.getTextElement(w, r)
 	case http.MethodPut:
-		h.updateMaterial(w, r)
+		h.updateTextElement(w, r)
 	case http.MethodDelete:
-		h.deleteMaterial(w, r)
-	default:
-		writeError(w, 405, "method_not_allowed", "method not allowed")
-	}
-}
-
-func (h *Handler) handleAssignment(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.getAssignment(w, r)
-	case http.MethodPut:
-		h.updateAssignment(w, r)
-	case http.MethodDelete:
-		h.deleteAssignment(w, r)
-	default:
-		writeError(w, 405, "method_not_allowed", "method not allowed")
-	}
-}
-
-func (h *Handler) handleCollaborativeNote(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		h.getCollaborativeNote(w, r)
-	case http.MethodPut:
-		h.updateCollaborativeNote(w, r)
-	case http.MethodDelete:
-		h.deleteCollaborativeNote(w, r)
+		h.deleteTextElement(w, r)
 	default:
 		writeError(w, 405, "method_not_allowed", "method not allowed")
 	}

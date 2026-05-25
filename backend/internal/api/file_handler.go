@@ -21,20 +21,8 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	var materialID, submissionID *int64
-	if m := r.FormValue("material_id"); m != "" {
-		if id, err := strconv.ParseInt(m, 10, 64); err == nil {
-			materialID = &id
-		}
-	}
-	if s := r.FormValue("submission_id"); s != "" {
-		if id, err := strconv.ParseInt(s, 10, 64); err == nil {
-			submissionID = &id
-		}
-	}
-
 	claims := GetUserFromContext(r.Context())
-	att, err := h.svc.UploadFile(r.Context(), claims.UserID, file, header, materialID, submissionID)
+	att, err := h.svc.UploadFile(r.Context(), claims.UserID, file, header)
 	if err != nil {
 		writeError(w, 400, "validation_error", err.Error())
 		return
