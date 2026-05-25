@@ -1,0 +1,16 @@
+[Unit]
+Description=SyncSpace Edu Backend
+After=network.target
+
+[Service]
+Type=simple
+User=www
+WorkingDirectory=/www/wwwroot/syncspace/backend
+ExecStart=/www/wwwroot/syncspace/backend/syncspace
+Restart=on-failure
+RestartSec=5
+Environment="SYNCSPACE_ADDR=:8080"
+Environment="SYNCSPACE_DB_PATH=/www/wwwroot/syncspace/data/syncspace.db"
+
+[Install]
+WantedBy=multi-user.target
