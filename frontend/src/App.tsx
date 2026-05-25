@@ -5,14 +5,14 @@ import { Navbar } from "./components/Navbar";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { ClassroomPage } from "./pages/ClassroomPage";
+import { BoardPage } from "./pages/BoardPage";
 import { AdminPage } from "./pages/AdminPage";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: "100vh", background: "#f3f4f6" }}>
+    <div className="appShell">
       <Navbar />
-      <main>{children}</main>
+      <main className="appMain">{children}</main>
     </div>
   );
 }
@@ -35,11 +35,11 @@ export function App() {
             }
           />
           <Route
-            path="/classrooms"
+            path="/boards"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <ClassroomPage />
+                  <BoardPage />
                 </Layout>
               </ProtectedRoute>
             }
