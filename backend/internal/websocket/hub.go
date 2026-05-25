@@ -245,6 +245,6 @@ func (c *Client) writePump() {
 	}
 }
 
-func ParseClassroomRoom(classroomID int64) string {
-	return "classroom_" + strconv.FormatInt(classroomID, 10)
+func ParseBoardRoom(boardID int64) string {
+	return "board_" + strconv.FormatInt(boardID, 10)
 }
