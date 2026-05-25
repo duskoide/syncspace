@@ -9,6 +9,7 @@ import (
 	"syncspace/backend/internal/config"
 	"syncspace/backend/internal/service"
 	"syncspace/backend/internal/store"
+	"syncspace/backend/internal/websocket"
 )
 
 func main() {
@@ -22,6 +23,12 @@ func main() {
 	svc := service.New(st)
 	h := api.New(svc)
 	mux := http.NewServeMux()
+
+	// WebSocket hub
+	hub := websocket.NewHub()
+	go hub.Run()
+	mux.HandleFunc("/ws", hub.HandleWebSocket)
+
 	h.Register(mux)
 
 	// Serve uploaded files

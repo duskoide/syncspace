@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
+import { useWebSocket } from "../hooks/useWebSocket";
 
 interface Classroom {
   id: number;
@@ -57,6 +58,9 @@ export function ClassroomPage() {
   const [newAssignment, setNewAssignment] = useState({ title: "", description: "", due_date: "", max_score: 100 });
   const [newDiscussion, setNewDiscussion] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const wsRoom = selected && tab === "discussions" ? `classroom_${selected.id}` : null;
+  const { messages: wsMessages, connected: wsConnected, sendMessage: sendWsMessage } = useWebSocket(wsRoom);
 
   useEffect(() => {
     loadClassrooms();
@@ -140,10 +144,11 @@ export function ClassroomPage() {
     e.preventDefault();
     if (!selected) return;
     try {
-      await api.createDiscussion({ classroom_id: selected.id, message: newDiscussion });
+      const disc = await api.createDiscussion({ classroom_id: selected.id, message: newDiscussion });
       setNewDiscussion("");
-      const discs = await api.listDiscussions(selected.id);
-      setDiscussions(discs);
+      setDiscussions((prev) => [disc, ...prev]);
+      // Also broadcast via WebSocket for real-time
+      sendWsMessage("chat_message", { message: newDiscussion, discussion_id: disc.id });
     } catch (err: any) {
       alert(err.message);
     }
@@ -381,6 +386,11 @@ export function ClassroomPage() {
 
             {tab === "discussions" && (
               <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, color: wsConnected ? "#059669" : "#dc2626" }}>
+                    ● {wsConnected ? "Real-time connected" : "Offline"}
+                  </span>
+                </div>
                 <form onSubmit={createDiscussion} style={{ background: "#f9fafb", padding: 16, borderRadius: 8, marginBottom: 16 }}>
                   <textarea
                     placeholder="Write a message..."
@@ -393,6 +403,15 @@ export function ClassroomPage() {
                     Post Message
                   </button>
                 </form>
+                {/* WebSocket live messages */}
+                {wsMessages
+                  .filter((m) => m.type === "chat_message")
+                  .map((m, idx) => (
+                    <div key={`ws-${idx}`} style={{ background: "#eff6ff", padding: 12, borderRadius: 8, marginBottom: 8, border: "1px solid #bfdbfe" }}>
+                      <div style={{ fontWeight: 600, color: "#2563eb", fontSize: 13, marginBottom: 4 }}>{m.user_name} (live)</div>
+                      <p style={{ color: "#4b5563", fontSize: 14 }}>{m.data?.message || "..."}</p>
+                    </div>
+                  ))}
                 {discussions.map((d) => (
                   <div key={d.id} style={{ background: "#fff", padding: 12, borderRadius: 8, marginBottom: 8, border: "1px solid #e5e7eb" }}>
                     <div style={{ fontWeight: 600, color: "#2563eb", fontSize: 13, marginBottom: 4 }}>{d.user_name}</div>
@@ -400,7 +419,7 @@ export function ClassroomPage() {
                     <p style={{ color: "#9ca3af", fontSize: 11, marginTop: 4 }}>{new Date(d.created_at).toLocaleString()}</p>
                   </div>
                 ))}
-                {discussions.length === 0 && <div style={{ color: "#6b7280", padding: 20 }}>No discussions yet. Be the first to post!</div>}
+                {discussions.length === 0 && wsMessages.length === 0 && <div style={{ color: "#6b7280", padding: 20 }}>No discussions yet. Be the first to post!</div>}
               </div>
             )}
           </div>
