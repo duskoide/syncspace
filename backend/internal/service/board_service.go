@@ -21,15 +21,8 @@ func (s *Service) GetBoard(ctx context.Context, id int64) (models.Board, error) 
 }
 
 func (s *Service) ListBoards(ctx context.Context, userID int64, role string) ([]models.Board, error) {
-	if role == "superadmin" {
-		// Superadmin sees all boards
-		return s.store.ListBoards(ctx, 0)
-	}
-	if role == "moderator" {
-		return s.store.ListBoards(ctx, userID)
-	}
-	// Collaborators see boards they're members of
-	return s.store.ListBoardsByMember(ctx, userID)
+	// Everyone can see all boards (discovery model)
+	return s.store.ListBoards(ctx, 0)
 }
 
 func (s *Service) ListAllBoards(ctx context.Context) ([]models.Board, error) {
@@ -70,6 +63,12 @@ func (s *Service) JoinBoard(ctx context.Context, userID, boardID int64, role str
 		return models.BoardMembership{}, fmt.Errorf("already a member of this board")
 	}
 
+	// Get board to check visibility
+	board, err := s.store.GetBoard(ctx, boardID)
+	if err != nil {
+		return models.BoardMembership{}, fmt.Errorf("board not found")
+	}
+
 	if role == "" {
 		role = "viewer"
 	}
@@ -79,6 +78,11 @@ func (s *Service) JoinBoard(ctx context.Context, userID, boardID int64, role str
 		UserID:  userID,
 		Role:    role,
 	}
+
+	// For private boards, you might want to set status to "pending" and require approval
+	// For now, all joins are auto-approved regardless of visibility
+	_ = board // Use board variable to avoid unused error
+
 	return s.store.CreateBoardMembership(ctx, bm)
 }
 

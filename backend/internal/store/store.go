@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS boards (
 	name TEXT NOT NULL,
 	description TEXT NOT NULL DEFAULT '',
 	moderator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	visibility TEXT NOT NULL DEFAULT 'public' CHECK(visibility IN ('public', 'private')),
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );
@@ -277,9 +278,12 @@ func (s *Store) DeleteUser(ctx context.Context, id int64) error {
 
 func (s *Store) CreateBoard(ctx context.Context, b models.Board) (models.Board, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
+	if b.Visibility == "" {
+		b.Visibility = "public"
+	}
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO boards(name, description, moderator_id, created_at, updated_at) VALUES(?, ?, ?, ?, ?)`,
-		b.Name, b.Description, b.ModeratorID, now, now)
+		`INSERT INTO boards(name, description, moderator_id, visibility, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?)`,
+		b.Name, b.Description, b.ModeratorID, b.Visibility, now, now)
 	if err != nil {
 		return models.Board{}, err
 	}
@@ -291,9 +295,9 @@ func (s *Store) GetBoard(ctx context.Context, id int64) (models.Board, error) {
 	var b models.Board
 	var cr, up string
 	err := s.db.QueryRowContext(ctx,
-		`SELECT b.id, b.name, b.description, b.moderator_id, u.name, b.created_at, b.updated_at 
+		`SELECT b.id, b.name, b.description, b.moderator_id, u.name, b.visibility, b.created_at, b.updated_at 
 		 FROM boards b JOIN users u ON b.moderator_id = u.id WHERE b.id = ?`, id).
-		Scan(&b.ID, &b.Name, &b.Description, &b.ModeratorID, &b.ModeratorName, &cr, &up)
+		Scan(&b.ID, &b.Name, &b.Description, &b.ModeratorID, &b.ModeratorName, &b.Visibility, &cr, &up)
 	if err != nil {
 		return b, err
 	}
@@ -303,7 +307,7 @@ func (s *Store) GetBoard(ctx context.Context, id int64) (models.Board, error) {
 }
 
 func (s *Store) ListBoards(ctx context.Context, moderatorID int64) ([]models.Board, error) {
-	query := `SELECT b.id, b.name, b.description, b.moderator_id, u.name, b.created_at, b.updated_at 
+	query := `SELECT b.id, b.name, b.description, b.moderator_id, u.name, b.visibility, b.created_at, b.updated_at
 		      FROM boards b JOIN users u ON b.moderator_id = u.id`
 	args := []interface{}{}
 	if moderatorID > 0 {
@@ -322,7 +326,7 @@ func (s *Store) ListBoards(ctx context.Context, moderatorID int64) ([]models.Boa
 	for rows.Next() {
 		var b models.Board
 		var cr, up string
-		if err := rows.Scan(&b.ID, &b.Name, &b.Description, &b.ModeratorID, &b.ModeratorName, &cr, &up); err != nil {
+		if err := rows.Scan(&b.ID, &b.Name, &b.Description, &b.ModeratorID, &b.ModeratorName, &b.Visibility, &cr, &up); err != nil {
 			return nil, err
 		}
 		b.CreatedAt, _ = time.Parse(time.RFC3339, cr)
@@ -334,10 +338,10 @@ func (s *Store) ListBoards(ctx context.Context, moderatorID int64) ([]models.Boa
 
 func (s *Store) ListBoardsByMember(ctx context.Context, userID int64) ([]models.Board, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT b.id, b.name, b.description, b.moderator_id, u.name, b.created_at, b.updated_at 
-		 FROM boards b 
-		 JOIN users u ON b.moderator_id = u.id 
-		 JOIN board_memberships bm ON b.id = bm.board_id 
+		`SELECT b.id, b.name, b.description, b.moderator_id, u.name, b.visibility, b.created_at, b.updated_at
+		 FROM boards b
+		 JOIN users u ON b.moderator_id = u.id
+		 JOIN board_memberships bm ON b.id = bm.board_id
 		 WHERE bm.user_id = ?
 		 ORDER BY b.created_at DESC`, userID)
 	if err != nil {
@@ -349,7 +353,7 @@ func (s *Store) ListBoardsByMember(ctx context.Context, userID int64) ([]models.
 	for rows.Next() {
 		var b models.Board
 		var cr, up string
-		if err := rows.Scan(&b.ID, &b.Name, &b.Description, &b.ModeratorID, &b.ModeratorName, &cr, &up); err != nil {
+		if err := rows.Scan(&b.ID, &b.Name, &b.Description, &b.ModeratorID, &b.ModeratorName, &b.Visibility, &cr, &up); err != nil {
 			return nil, err
 		}
 		b.CreatedAt, _ = time.Parse(time.RFC3339, cr)
@@ -362,8 +366,8 @@ func (s *Store) ListBoardsByMember(ctx context.Context, userID int64) ([]models.
 func (s *Store) UpdateBoard(ctx context.Context, id int64, b models.Board) (models.Board, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE boards SET name = ?, description = ?, updated_at = ? WHERE id = ?`,
-		b.Name, b.Description, now, id)
+		`UPDATE boards SET name = ?, description = ?, visibility = ?, updated_at = ? WHERE id = ?`,
+		b.Name, b.Description, b.Visibility, now, id)
 	if err != nil {
 		return models.Board{}, err
 	}

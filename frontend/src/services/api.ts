@@ -55,10 +55,10 @@ export const api = {
 
   // Boards (formerly Classrooms)
   listBoards: () => request("/api/boards"),
-  createBoard: (data: { name: string; description: string }) =>
+  createBoard: (data: { name: string; description: string; visibility: string }) =>
     request("/api/boards", { method: "POST", body: JSON.stringify(data) }),
   getBoard: (id: number) => request(`/api/boards/${id}`),
-  updateBoard: (id: number, data: { name: string; description: string }) =>
+  updateBoard: (id: number, data: { name: string; description: string; visibility: string }) =>
     request(`/api/boards/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   deleteBoard: (id: number) =>
     request(`/api/boards/${id}`, { method: "DELETE" }),

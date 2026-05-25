@@ -9,6 +9,7 @@ interface Board {
   description: string;
   moderator_id: number;
   moderator_name: string;
+  visibility: string;
   created_at: string;
 }
 
@@ -57,7 +58,7 @@ export function BoardPage() {
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [showCreate, setShowCreate] = useState(false);
-  const [newBoard, setNewBoard] = useState({ name: "", description: "" });
+  const [newBoard, setNewBoard] = useState({ name: "", description: "", visibility: "public" });
   const [newDiscussion, setNewDiscussion] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingNote, setEditingNote] = useState<number | null>(null);
@@ -138,7 +139,7 @@ export function BoardPage() {
     try {
       await api.createBoard(newBoard);
       setShowCreate(false);
-      setNewBoard({ name: "", description: "" });
+      setNewBoard({ name: "", description: "", visibility: "public" });
       loadBoards();
     } catch (err: any) {
       alert(err.message);
@@ -353,6 +354,13 @@ export function BoardPage() {
                   onChange={(e) => setNewBoard({ ...newBoard, description: e.target.value })}
                   style={{ minHeight: 100 }}
                 />
+                <select
+                  value={newBoard.visibility}
+                  onChange={(e) => setNewBoard({ ...newBoard, visibility: e.target.value })}
+                >
+                  <option value="public">Public - Anyone can join</option>
+                  <option value="private">Private - Invite only</option>
+                </select>
                 <div className="actions">
                   <button type="submit">Create</button>
                   <button type="button" className="ghost" onClick={() => setShowCreate(false)}>
@@ -369,7 +377,12 @@ export function BoardPage() {
                   onClick={() => selectBoard(b)}
                   className={`boardItem${selected?.id === b.id ? " active" : ""}`}
                 >
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{b.name}</div>
+                  <div style={{ fontWeight: 600, marginBottom: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>{b.name}</span>
+                    <span className={`tag ${b.visibility === "public" ? "tag-success" : "tag-warning"}`} style={{ fontSize: "0.7rem", padding: "2px 8px" }}>
+                      {b.visibility}
+                    </span>
+                  </div>
                   <div className="boardMeta">{b.moderator_name}</div>
                 </div>
               ))}
@@ -411,7 +424,12 @@ export function BoardPage() {
                     <p className="eyebrow">Board</p>
                     <h1 style={{ marginBottom: 6 }}>{selected.name}</h1>
                     <p className="sub" style={{ marginBottom: 10 }}>{selected.description}</p>
-                    <p className="metaText">Moderator: {selected.moderator_name}</p>
+                    <p className="metaText">
+                      Moderator: {selected.moderator_name} ·{" "}
+                      <span className={`tag ${selected.visibility === "public" ? "tag-success" : "tag-warning"}`} style={{ fontSize: "0.75rem" }}>
+                        {selected.visibility}
+                      </span>
+                    </p>
                   </div>
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                     <span

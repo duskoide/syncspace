@@ -8,6 +8,7 @@ type Board struct {
 	Description   string    `json:"description"`
 	ModeratorID   int64     `json:"moderator_id"`
 	ModeratorName string    `json:"moderator_name,omitempty"`
+	Visibility    string    `json:"visibility"` // public, private
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
