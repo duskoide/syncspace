@@ -53,73 +53,43 @@ export const api = {
   suspendUser: (id: number) =>
     request(`/api/admin/users/${id}/suspend`, { method: "PUT" }),
 
-  // Classrooms
-  listClassrooms: () => request("/api/classrooms"),
-  createClassroom: (data: { name: string; description: string }) =>
-    request("/api/classrooms", { method: "POST", body: JSON.stringify(data) }),
-  getClassroom: (id: number) => request(`/api/classrooms/${id}`),
-  updateClassroom: (id: number, data: { name: string; description: string }) =>
-    request(`/api/classrooms/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deleteClassroom: (id: number) =>
-    request(`/api/classrooms/${id}`, { method: "DELETE" }),
-  enroll: (id: number) =>
-    request(`/api/classrooms/${id}/enroll`, { method: "POST" }),
-  approveEnrollment: (id: number) =>
-    request(`/api/enrollments/${id}/approve`, { method: "PUT" }),
+  // Boards (formerly Classrooms)
+  listBoards: () => request("/api/boards"),
+  createBoard: (data: { name: string; description: string }) =>
+    request("/api/boards", { method: "POST", body: JSON.stringify(data) }),
+  getBoard: (id: number) => request(`/api/boards/${id}`),
+  updateBoard: (id: number, data: { name: string; description: string }) =>
+    request(`/api/boards/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteBoard: (id: number) =>
+    request(`/api/boards/${id}`, { method: "DELETE" }),
+  joinBoard: (id: number) =>
+    request(`/api/boards/${id}/join`, { method: "POST" }),
+  approveMembership: (id: number) =>
+    request(`/api/memberships/${id}/approve`, { method: "PUT" }),
+  getBoardMembers: (id: number) =>
+    request(`/api/boards/${id}/members`),
 
-  // Materials
-  listMaterials: (classroomId: number) =>
-    request(`/api/materials?classroom_id=${classroomId}`),
-  createMaterial: (data: { classroom_id: number; title: string; content: string; tags: string }) =>
-    request("/api/materials", { method: "POST", body: JSON.stringify(data) }),
-  getMaterial: (id: number) => request(`/api/materials/${id}`),
-  updateMaterial: (id: number, data: { title: string; content: string; tags: string }) =>
-    request(`/api/materials/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deleteMaterial: (id: number) =>
-    request(`/api/materials/${id}`, { method: "DELETE" }),
+  // Text Elements (sticky notes on whiteboard)
+  listTextElements: (boardId: number) =>
+    request(`/api/boards/${boardId}/text-elements`),
+  createTextElement: (data: { board_id: number; content: string; x: number; y: number; color?: string }) =>
+    request("/api/text-elements", { method: "POST", body: JSON.stringify(data) }),
+  updateTextElement: (id: number, data: { content?: string; x?: number; y?: number; color?: string }) =>
+    request(`/api/text-elements/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteTextElement: (id: number) =>
+    request(`/api/text-elements/${id}`, { method: "DELETE" }),
 
-  // Assignments
-  listAssignments: (classroomId: number) =>
-    request(`/api/assignments?classroom_id=${classroomId}`),
-  createAssignment: (data: { classroom_id: number; title: string; description: string; due_date: string; max_score: number }) =>
-    request("/api/assignments", { method: "POST", body: JSON.stringify(data) }),
-  getAssignment: (id: number) => request(`/api/assignments/${id}`),
-  deleteAssignment: (id: number) =>
-    request(`/api/assignments/${id}`, { method: "DELETE" }),
-  submitWork: (id: number, content: string) =>
-    request(`/api/assignments/${id}/submissions`, {
-      method: "POST",
-      body: JSON.stringify({ content }),
-    }),
-  listSubmissions: (id: number) =>
-    request(`/api/assignments/${id}/submissions`),
-  gradeSubmission: (id: number, score: number, feedback: string) =>
-    request(`/api/submissions/${id}/grade`, {
-      method: "PUT",
-      body: JSON.stringify({ score, feedback }),
-    }),
-
-  // Collaborative Notes
-  listNotes: (classroomId: number) =>
-    request(`/api/collaborative-notes?classroom_id=${classroomId}`),
-  createNote: (data: { classroom_id: number; title: string; content: string }) =>
-    request("/api/collaborative-notes", { method: "POST", body: JSON.stringify(data) }),
-  updateNote: (id: number, data: { title: string; content: string }) =>
-    request(`/api/collaborative-notes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deleteNote: (id: number) =>
-    request(`/api/collaborative-notes/${id}`, { method: "DELETE" }),
-
-  // Discussions
-  listDiscussions: (classroomId: number) =>
-    request(`/api/discussions?classroom_id=${classroomId}`),
-  createDiscussion: (data: { classroom_id: number; message: string; parent_id?: number }) =>
+  // Discussions (board_id instead of classroom_id)
+  listDiscussions: (boardId: number) =>
+    request(`/api/discussions?board_id=${boardId}`),
+  createDiscussion: (data: { board_id: number; message: string; parent_id?: number }) =>
     request("/api/discussions", { method: "POST", body: JSON.stringify(data) }),
 
   // Files
-  uploadFile: (file: File, materialId?: number) => {
+  uploadFile: (file: File, boardId?: number) => {
     const form = new FormData();
     form.append("file", file);
-    if (materialId) form.append("material_id", String(materialId));
+    if (boardId) form.append("board_id", String(boardId));
     return request("/api/upload", { method: "POST", body: form, headers: {} });
   },
 };
