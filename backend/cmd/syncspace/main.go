@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"syncspace/backend/internal/api"
 	"syncspace/backend/internal/config"
@@ -23,6 +24,10 @@ func main() {
 	mux := http.NewServeMux()
 	h.Register(mux)
 
+	// Serve uploaded files
+	os.MkdirAll("uploads", 0755)
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("uploads"))))
+
 	server := &http.Server{Addr: cfg.Addr, Handler: withCORS(mux)}
 	log.Printf("syncspace backend listening on %s", cfg.Addr)
 	if err := server.ListenAndServe(); err != nil {
@@ -33,7 +38,7 @@ func main() {
 func withCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 		w.Header().Set("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
