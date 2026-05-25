@@ -23,8 +23,8 @@ func (s *Service) Register(ctx context.Context, req models.RegisterRequest) (mod
 	if strings.TrimSpace(req.Name) == "" {
 		return models.User{}, fmt.Errorf("name is required")
 	}
-	if req.Role != "teacher" && req.Role != "student" {
-		return models.User{}, fmt.Errorf("role must be teacher or student")
+	if req.Role != "moderator" && req.Role != "collaborator" {
+		return models.User{}, fmt.Errorf("role must be moderator or collaborator")
 	}
 
 	hash, err := auth.HashPassword(req.Password)
