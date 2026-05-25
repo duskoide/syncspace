@@ -951,3 +951,50 @@ button.active {
   background: rgba(94, 168, 187, 0.2);
   color: #5ea8bb;
 }
+
+/* Wiki Research Styles */
+.wikiResult {
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+}
+
+.wikiHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.wikiSource {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.wikiContent {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #d9e6ed;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.wikiContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.wikiContent::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.wikiContent::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}

@@ -92,6 +92,10 @@ export const api = {
     if (boardId) form.append("board_id", String(boardId));
     return request("/api/upload", { method: "POST", body: form, headers: {} });
   },
+
+  // Wikipedia API
+  wikiSummary: (topic: string) =>
+    request(`/api/wiki/summary?topic=${encodeURIComponent(topic)}`),
 };
 
 export { ApiError };

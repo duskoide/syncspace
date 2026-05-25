@@ -61,6 +61,12 @@ export function BoardPage() {
   const [newDiscussion, setNewDiscussion] = useState("");
   const [loading, setLoading] = useState(true);
   const [editingNote, setEditingNote] = useState<number | null>(null);
+  
+  // Wiki search state
+  const [wikiQuery, setWikiQuery] = useState("");
+  const [wikiResult, setWikiResult] = useState<{ topic: string; summary: string } | null>(null);
+  const [wikiLoading, setWikiLoading] = useState(false);
+  const [wikiError, setWikiError] = useState("");
   const [editContent, setEditContent] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [draggingNote, setDraggingNote] = useState<number | null>(null);
@@ -160,6 +166,47 @@ export function BoardPage() {
     } catch (err: any) {
       alert(err.message);
     }
+  };
+
+  const searchWikipedia = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!wikiQuery.trim()) return;
+    
+    setWikiLoading(true);
+    setWikiError("");
+    setWikiResult(null);
+    
+    try {
+      const result = await api.wikiSummary(wikiQuery);
+      setWikiResult(result);
+    } catch (err: any) {
+      setWikiError(err.message || "Failed to fetch Wikipedia data");
+    } finally {
+      setWikiLoading(false);
+    }
+  };
+
+  const createNoteFromWiki = () => {
+    if (!wikiResult || !selected) return;
+    
+    const canvas = canvasRef.current;
+    const centerX = canvas ? canvas.clientWidth / 2 - 100 : 100;
+    const centerY = canvas ? canvas.clientHeight / 2 - 75 : 100;
+    
+    const randomColor = NOTE_COLORS[Math.floor(Math.random() * NOTE_COLORS.length)];
+    
+    api.createTextElement({
+      board_id: selected.id,
+      content: `[${wikiResult.topic}]\n${wikiResult.summary}`,
+      x: centerX,
+      y: centerY,
+      color: randomColor.bg,
+    }).then((newElement) => {
+      setTextElements((prev) => [...prev, newElement]);
+      sendWsMessage("text_element_created", newElement);
+    }).catch((err: any) => {
+      alert(err.message);
+    });
   };
 
   const handleCanvasClick = async (e: React.MouseEvent<HTMLDivElement>) => {
@@ -468,6 +515,54 @@ export function BoardPage() {
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="card">
+                <p className="eyebrow">Research</p>
+                <form onSubmit={searchWikipedia} className="stack" style={{ marginTop: 12 }}>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <input
+                      type="text"
+                      placeholder="Search Wikipedia..."
+                      value={wikiQuery}
+                      onChange={(e) => setWikiQuery(e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <button type="submit" disabled={wikiLoading}>
+                      {wikiLoading ? "Searching..." : "Search"}
+                    </button>
+                  </div>
+                </form>
+                
+                {wikiError && (
+                  <div className="banner error" style={{ marginTop: 12 }}>
+                    {wikiError}
+                  </div>
+                )}
+                
+                {wikiResult && (
+                  <div className="wikiResult" style={{ marginTop: 16 }}>
+                    <div className="wikiHeader">
+                      <h4 style={{ margin: 0 }}>{wikiResult.topic}</h4>
+                      <span className="wikiSource">via Wikipedia</span>
+                    </div>
+                    <p className="wikiContent">{wikiResult.summary}</p>
+                    <div className="actions" style={{ marginTop: 12 }}>
+                      <button onClick={createNoteFromWiki}>
+                        Add to Board
+                      </button>
+                      <button className="ghost" onClick={() => setWikiResult(null)}>
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {!wikiResult && !wikiError && !wikiLoading && (
+                  <div className="emptyState" style={{ padding: "20px 0" }}>
+                    <p className="muted">Search Wikipedia to research topics and add findings to your board.</p>
+                  </div>
+                )}
               </div>
 
               <div className="card">
