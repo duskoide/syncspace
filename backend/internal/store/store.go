@@ -53,13 +53,26 @@ func Open(path string) (*Store, error) {
 func (s *Store) Close() error { return s.db.Close() }
 
 func (s *Store) migrate(ctx context.Context) error {
+	// Drop old tables from previous schema to ensure clean migration
+	dropOldTables := `
+DROP TABLE IF EXISTS collaborative_notes;
+DROP TABLE IF EXISTS note_contributors;
+DROP TABLE IF EXISTS submissions;
+DROP TABLE IF EXISTS assignments;
+DROP TABLE IF EXISTS materials;
+DROP TABLE IF EXISTS attachments_old;
+DROP TABLE IF EXISTS enrollments;
+DROP TABLE IF EXISTS classrooms;
+`
+	_, _ = s.db.ExecContext(ctx, dropOldTables)
+
 	schema := `
 CREATE TABLE IF NOT EXISTS users (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	email TEXT UNIQUE NOT NULL,
 	password_hash TEXT NOT NULL,
 	name TEXT NOT NULL,
-	role TEXT NOT NULL CHECK(role IN ('superadmin', 'teacher', 'student')),
+	role TEXT NOT NULL CHECK(role IN ('superadmin', 'moderator', 'collaborator')),
 	status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'active', 'suspended')),
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
@@ -68,43 +81,55 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 
-CREATE TABLE IF NOT EXISTS classrooms (
+CREATE TABLE IF NOT EXISTS boards (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	name TEXT NOT NULL,
 	description TEXT NOT NULL DEFAULT '',
-	teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	moderator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_classrooms_teacher ON classrooms(teacher_id);
+CREATE INDEX IF NOT EXISTS idx_boards_moderator ON boards(moderator_id);
 
-CREATE TABLE IF NOT EXISTS enrollments (
+CREATE TABLE IF NOT EXISTS board_memberships (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
-	student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-	status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'active', 'inactive')),
-	enrolled_at TEXT NOT NULL,
-	UNIQUE(classroom_id, student_id)
+	board_id INTEGER NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	role TEXT DEFAULT 'viewer' CHECK(role IN ('viewer', 'editor')),
+	joined_at TEXT NOT NULL,
+	UNIQUE(board_id, user_id)
 );
-CREATE INDEX IF NOT EXISTS idx_enrollments_classroom ON enrollments(classroom_id);
-CREATE INDEX IF NOT EXISTS idx_enrollments_student ON enrollments(student_id);
+CREATE INDEX IF NOT EXISTS idx_board_memberships_board ON board_memberships(board_id);
+CREATE INDEX IF NOT EXISTS idx_board_memberships_user ON board_memberships(user_id);
 
-CREATE TABLE IF NOT EXISTS materials (
+CREATE TABLE IF NOT EXISTS text_elements (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
-	teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-	title TEXT NOT NULL,
+	board_id INTEGER NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
 	content TEXT NOT NULL DEFAULT '',
-	tags TEXT NOT NULL DEFAULT '',
+	x REAL NOT NULL DEFAULT 0,
+	y REAL NOT NULL DEFAULT 0,
+	width REAL NOT NULL DEFAULT 200,
+	height REAL NOT NULL DEFAULT 150,
+	color TEXT NOT NULL DEFAULT '#FFFF88',
+	created_by INTEGER NOT NULL REFERENCES users(id),
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_materials_classroom ON materials(classroom_id);
+CREATE INDEX IF NOT EXISTS idx_text_elements_board ON text_elements(board_id);
+CREATE INDEX IF NOT EXISTS idx_text_elements_created_by ON text_elements(created_by);
+
+CREATE TABLE IF NOT EXISTS discussions (
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	board_id INTEGER NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	message TEXT NOT NULL,
+	parent_id INTEGER REFERENCES discussions(id) ON DELETE CASCADE,
+	created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_discussions_board ON discussions(board_id);
 
 CREATE TABLE IF NOT EXISTS attachments (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	material_id INTEGER REFERENCES materials(id) ON DELETE CASCADE,
-	submission_id INTEGER REFERENCES submissions(id) ON DELETE CASCADE,
 	filename TEXT NOT NULL,
 	original_name TEXT NOT NULL,
 	mime_type TEXT NOT NULL,
@@ -113,69 +138,9 @@ CREATE TABLE IF NOT EXISTS attachments (
 	uploaded_by INTEGER NOT NULL REFERENCES users(id),
 	created_at TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_attachments_material ON attachments(material_id);
-CREATE INDEX IF NOT EXISTS idx_attachments_submission ON attachments(submission_id);
+CREATE INDEX IF NOT EXISTS idx_attachments_uploaded_by ON attachments(uploaded_by);
 
-CREATE TABLE IF NOT EXISTS assignments (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
-	teacher_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-	title TEXT NOT NULL,
-	description TEXT NOT NULL DEFAULT '',
-	due_date TEXT NOT NULL,
-	max_score INTEGER DEFAULT 100,
-	created_at TEXT NOT NULL,
-	updated_at TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_assignments_classroom ON assignments(classroom_id);
-
-CREATE TABLE IF NOT EXISTS submissions (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	assignment_id INTEGER NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
-	student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-	content TEXT NOT NULL DEFAULT '',
-	score INTEGER,
-	feedback TEXT DEFAULT '',
-	submitted_at TEXT NOT NULL,
-	graded_at TEXT,
-	UNIQUE(assignment_id, student_id)
-);
-CREATE INDEX IF NOT EXISTS idx_submissions_assignment ON submissions(assignment_id);
-CREATE INDEX IF NOT EXISTS idx_submissions_student ON submissions(student_id);
-
-CREATE TABLE IF NOT EXISTS collaborative_notes (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	material_id INTEGER REFERENCES materials(id) ON DELETE SET NULL,
-	classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
-	created_by INTEGER NOT NULL REFERENCES users(id),
-	title TEXT NOT NULL,
-	content TEXT NOT NULL DEFAULT '',
-	is_public BOOLEAN DEFAULT 1,
-	created_at TEXT NOT NULL,
-	updated_at TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_notes_classroom ON collaborative_notes(classroom_id);
-
-CREATE TABLE IF NOT EXISTS note_contributors (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	note_id INTEGER NOT NULL REFERENCES collaborative_notes(id) ON DELETE CASCADE,
-	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-	contributed_at TEXT NOT NULL,
-	UNIQUE(note_id, user_id)
-);
-
-CREATE TABLE IF NOT EXISTS discussions (
-	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
-	material_id INTEGER REFERENCES materials(id) ON DELETE CASCADE,
-	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-	message TEXT NOT NULL,
-	parent_id INTEGER REFERENCES discussions(id) ON DELETE CASCADE,
-	created_at TEXT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_discussions_classroom ON discussions(classroom_id);
-
--- Keep old tables for backward compatibility
+-- Legacy tables for backward compatibility (kept but not used)
 CREATE TABLE IF NOT EXISTS tasks (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	title TEXT NOT NULL,
@@ -308,44 +273,44 @@ func (s *Store) DeleteUser(ctx context.Context, id int64) error {
 	return err
 }
 
-// Classroom methods
+// Board methods
 
-func (s *Store) CreateClassroom(ctx context.Context, c models.Classroom) (models.Classroom, error) {
+func (s *Store) CreateBoard(ctx context.Context, b models.Board) (models.Board, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO classrooms(name, description, teacher_id, created_at, updated_at) VALUES(?, ?, ?, ?, ?)`,
-		c.Name, c.Description, c.TeacherID, now, now)
+		`INSERT INTO boards(name, description, moderator_id, created_at, updated_at) VALUES(?, ?, ?, ?, ?)`,
+		b.Name, b.Description, b.ModeratorID, now, now)
 	if err != nil {
-		return models.Classroom{}, err
+		return models.Board{}, err
 	}
 	id, _ := res.LastInsertId()
-	return s.GetClassroom(ctx, id)
+	return s.GetBoard(ctx, id)
 }
 
-func (s *Store) GetClassroom(ctx context.Context, id int64) (models.Classroom, error) {
-	var c models.Classroom
+func (s *Store) GetBoard(ctx context.Context, id int64) (models.Board, error) {
+	var b models.Board
 	var cr, up string
 	err := s.db.QueryRowContext(ctx,
-		`SELECT c.id, c.name, c.description, c.teacher_id, u.name, c.created_at, c.updated_at 
-		 FROM classrooms c JOIN users u ON c.teacher_id = u.id WHERE c.id = ?`, id).
-		Scan(&c.ID, &c.Name, &c.Description, &c.TeacherID, &c.TeacherName, &cr, &up)
+		`SELECT b.id, b.name, b.description, b.moderator_id, u.name, b.created_at, b.updated_at 
+		 FROM boards b JOIN users u ON b.moderator_id = u.id WHERE b.id = ?`, id).
+		Scan(&b.ID, &b.Name, &b.Description, &b.ModeratorID, &b.ModeratorName, &cr, &up)
 	if err != nil {
-		return c, err
+		return b, err
 	}
-	c.CreatedAt, _ = time.Parse(time.RFC3339, cr)
-	c.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-	return c, nil
+	b.CreatedAt, _ = time.Parse(time.RFC3339, cr)
+	b.UpdatedAt, _ = time.Parse(time.RFC3339, up)
+	return b, nil
 }
 
-func (s *Store) ListClassrooms(ctx context.Context, teacherID int64) ([]models.Classroom, error) {
-	query := `SELECT c.id, c.name, c.description, c.teacher_id, u.name, c.created_at, c.updated_at 
-		      FROM classrooms c JOIN users u ON c.teacher_id = u.id`
+func (s *Store) ListBoards(ctx context.Context, moderatorID int64) ([]models.Board, error) {
+	query := `SELECT b.id, b.name, b.description, b.moderator_id, u.name, b.created_at, b.updated_at 
+		      FROM boards b JOIN users u ON b.moderator_id = u.id`
 	args := []interface{}{}
-	if teacherID > 0 {
-		query += ` WHERE c.teacher_id = ?`
-		args = append(args, teacherID)
+	if moderatorID > 0 {
+		query += ` WHERE b.moderator_id = ?`
+		args = append(args, moderatorID)
 	}
-	query += ` ORDER BY c.created_at DESC`
+	query += ` ORDER BY b.created_at DESC`
 
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -353,576 +318,211 @@ func (s *Store) ListClassrooms(ctx context.Context, teacherID int64) ([]models.C
 	}
 	defer rows.Close()
 
-	out := []models.Classroom{}
+	out := []models.Board{}
 	for rows.Next() {
-		var c models.Classroom
+		var b models.Board
 		var cr, up string
-		if err := rows.Scan(&c.ID, &c.Name, &c.Description, &c.TeacherID, &c.TeacherName, &cr, &up); err != nil {
+		if err := rows.Scan(&b.ID, &b.Name, &b.Description, &b.ModeratorID, &b.ModeratorName, &cr, &up); err != nil {
 			return nil, err
 		}
-		c.CreatedAt, _ = time.Parse(time.RFC3339, cr)
-		c.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-		out = append(out, c)
+		b.CreatedAt, _ = time.Parse(time.RFC3339, cr)
+		b.UpdatedAt, _ = time.Parse(time.RFC3339, up)
+		out = append(out, b)
 	}
 	return out, rows.Err()
 }
 
-func (s *Store) ListStudentClassrooms(ctx context.Context, studentID int64) ([]models.Classroom, error) {
+func (s *Store) ListBoardsByMember(ctx context.Context, userID int64) ([]models.Board, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT c.id, c.name, c.description, c.teacher_id, u.name, c.created_at, c.updated_at 
-		 FROM classrooms c 
-		 JOIN users u ON c.teacher_id = u.id 
-		 JOIN enrollments e ON c.id = e.classroom_id 
-		 WHERE e.student_id = ? AND e.status = 'active'
-		 ORDER BY c.created_at DESC`, studentID)
+		`SELECT b.id, b.name, b.description, b.moderator_id, u.name, b.created_at, b.updated_at 
+		 FROM boards b 
+		 JOIN users u ON b.moderator_id = u.id 
+		 JOIN board_memberships bm ON b.id = bm.board_id 
+		 WHERE bm.user_id = ?
+		 ORDER BY b.created_at DESC`, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	out := []models.Classroom{}
+	out := []models.Board{}
 	for rows.Next() {
-		var c models.Classroom
+		var b models.Board
 		var cr, up string
-		if err := rows.Scan(&c.ID, &c.Name, &c.Description, &c.TeacherID, &c.TeacherName, &cr, &up); err != nil {
+		if err := rows.Scan(&b.ID, &b.Name, &b.Description, &b.ModeratorID, &b.ModeratorName, &cr, &up); err != nil {
 			return nil, err
 		}
-		c.CreatedAt, _ = time.Parse(time.RFC3339, cr)
-		c.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-		out = append(out, c)
+		b.CreatedAt, _ = time.Parse(time.RFC3339, cr)
+		b.UpdatedAt, _ = time.Parse(time.RFC3339, up)
+		out = append(out, b)
 	}
 	return out, rows.Err()
 }
 
-func (s *Store) UpdateClassroom(ctx context.Context, id int64, c models.Classroom) (models.Classroom, error) {
+func (s *Store) UpdateBoard(ctx context.Context, id int64, b models.Board) (models.Board, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE classrooms SET name = ?, description = ?, updated_at = ? WHERE id = ?`,
-		c.Name, c.Description, now, id)
+		`UPDATE boards SET name = ?, description = ?, updated_at = ? WHERE id = ?`,
+		b.Name, b.Description, now, id)
 	if err != nil {
-		return models.Classroom{}, err
+		return models.Board{}, err
 	}
-	return s.GetClassroom(ctx, id)
+	return s.GetBoard(ctx, id)
 }
 
-func (s *Store) DeleteClassroom(ctx context.Context, id int64) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM classrooms WHERE id = ?`, id)
+func (s *Store) DeleteBoard(ctx context.Context, id int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM boards WHERE id = ?`, id)
 	return err
 }
 
-// Enrollment methods
+// BoardMembership methods
 
-func (s *Store) CreateEnrollment(ctx context.Context, e models.Enrollment) (models.Enrollment, error) {
+func (s *Store) CreateBoardMembership(ctx context.Context, bm models.BoardMembership) (models.BoardMembership, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO enrollments(classroom_id, student_id, status, enrolled_at) VALUES(?, ?, ?, ?)`,
-		e.ClassroomID, e.StudentID, e.Status, now)
+		`INSERT INTO board_memberships(board_id, user_id, role, joined_at) VALUES(?, ?, ?, ?)`,
+		bm.BoardID, bm.UserID, bm.Role, now)
 	if err != nil {
-		return models.Enrollment{}, err
+		return models.BoardMembership{}, err
 	}
 	id, _ := res.LastInsertId()
-	return s.GetEnrollment(ctx, id)
+	return s.GetBoardMembership(ctx, id)
 }
 
-func (s *Store) GetEnrollment(ctx context.Context, id int64) (models.Enrollment, error) {
-	var e models.Enrollment
-	var en string
+func (s *Store) GetBoardMembership(ctx context.Context, id int64) (models.BoardMembership, error) {
+	var bm models.BoardMembership
+	var joined string
 	err := s.db.QueryRowContext(ctx,
-		`SELECT e.id, e.classroom_id, e.student_id, u.name, u.email, e.status, e.enrolled_at
-		 FROM enrollments e JOIN users u ON e.student_id = u.id WHERE e.id = ?`, id).
-		Scan(&e.ID, &e.ClassroomID, &e.StudentID, &e.StudentName, &e.StudentEmail, &e.Status, &en)
+		`SELECT bm.id, bm.board_id, bm.user_id, u.name, bm.role, bm.joined_at
+		 FROM board_memberships bm JOIN users u ON bm.user_id = u.id WHERE bm.id = ?`, id).
+		Scan(&bm.ID, &bm.BoardID, &bm.UserID, &bm.UserName, &bm.Role, &joined)
 	if err != nil {
-		return e, err
+		return bm, err
 	}
-	e.EnrolledAt, _ = time.Parse(time.RFC3339, en)
-	return e, nil
+	bm.JoinedAt, _ = time.Parse(time.RFC3339, joined)
+	return bm, nil
 }
 
-func (s *Store) GetEnrollmentByClassroomAndStudent(ctx context.Context, classroomID, studentID int64) (models.Enrollment, error) {
-	var e models.Enrollment
-	var en string
+func (s *Store) GetBoardMembershipByBoardAndUser(ctx context.Context, boardID, userID int64) (models.BoardMembership, error) {
+	var bm models.BoardMembership
+	var joined string
 	err := s.db.QueryRowContext(ctx,
-		`SELECT e.id, e.classroom_id, e.student_id, u.name, u.email, e.status, e.enrolled_at
-		 FROM enrollments e JOIN users u ON e.student_id = u.id 
-		 WHERE e.classroom_id = ? AND e.student_id = ?`, classroomID, studentID).
-		Scan(&e.ID, &e.ClassroomID, &e.StudentID, &e.StudentName, &e.StudentEmail, &e.Status, &en)
+		`SELECT bm.id, bm.board_id, bm.user_id, u.name, bm.role, bm.joined_at
+		 FROM board_memberships bm JOIN users u ON bm.user_id = u.id 
+		 WHERE bm.board_id = ? AND bm.user_id = ?`, boardID, userID).
+		Scan(&bm.ID, &bm.BoardID, &bm.UserID, &bm.UserName, &bm.Role, &joined)
 	if err != nil {
-		return e, err
+		return bm, err
 	}
-	e.EnrolledAt, _ = time.Parse(time.RFC3339, en)
-	return e, nil
+	bm.JoinedAt, _ = time.Parse(time.RFC3339, joined)
+	return bm, nil
 }
 
-func (s *Store) ListEnrollmentsByClassroom(ctx context.Context, classroomID int64, status string) ([]models.Enrollment, error) {
-	query := `SELECT e.id, e.classroom_id, e.student_id, u.name, u.email, e.status, e.enrolled_at
-		      FROM enrollments e JOIN users u ON e.student_id = u.id WHERE e.classroom_id = ?`
-	args := []interface{}{classroomID}
-	if status != "" {
-		query += ` AND e.status = ?`
-		args = append(args, status)
-	}
-	query += ` ORDER BY e.enrolled_at DESC`
-
-	rows, err := s.db.QueryContext(ctx, query, args...)
+func (s *Store) ListBoardMembershipsByBoard(ctx context.Context, boardID int64) ([]models.BoardMembership, error) {
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT bm.id, bm.board_id, bm.user_id, u.name, bm.role, bm.joined_at
+		 FROM board_memberships bm JOIN users u ON bm.user_id = u.id 
+		 WHERE bm.board_id = ? ORDER BY bm.joined_at DESC`, boardID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	out := []models.Enrollment{}
+	out := []models.BoardMembership{}
 	for rows.Next() {
-		var e models.Enrollment
-		var en string
-		if err := rows.Scan(&e.ID, &e.ClassroomID, &e.StudentID, &e.StudentName, &e.StudentEmail, &e.Status, &en); err != nil {
+		var bm models.BoardMembership
+		var joined string
+		if err := rows.Scan(&bm.ID, &bm.BoardID, &bm.UserID, &bm.UserName, &bm.Role, &joined); err != nil {
 			return nil, err
 		}
-		e.EnrolledAt, _ = time.Parse(time.RFC3339, en)
-		out = append(out, e)
+		bm.JoinedAt, _ = time.Parse(time.RFC3339, joined)
+		out = append(out, bm)
 	}
 	return out, rows.Err()
 }
 
-func (s *Store) UpdateEnrollmentStatus(ctx context.Context, id int64, status string) error {
+func (s *Store) UpdateBoardMembershipRole(ctx context.Context, id int64, role string) error {
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE enrollments SET status = ? WHERE id = ?`,
-		status, id)
+		`UPDATE board_memberships SET role = ? WHERE id = ?`,
+		role, id)
 	return err
 }
 
-func (s *Store) DeleteEnrollment(ctx context.Context, classroomID, studentID int64) error {
+func (s *Store) DeleteBoardMembership(ctx context.Context, boardID, userID int64) error {
 	_, err := s.db.ExecContext(ctx,
-		`DELETE FROM enrollments WHERE classroom_id = ? AND student_id = ?`,
-		classroomID, studentID)
+		`DELETE FROM board_memberships WHERE board_id = ? AND user_id = ?`,
+		boardID, userID)
 	return err
 }
 
-// Material methods
+// TextElement methods
 
-func (s *Store) CreateMaterial(ctx context.Context, m models.Material) (models.Material, error) {
+func (s *Store) CreateTextElement(ctx context.Context, te models.TextElement) (models.TextElement, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO materials(classroom_id, teacher_id, title, content, tags, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?)`,
-		m.ClassroomID, m.TeacherID, m.Title, m.Content, m.Tags, now, now)
+		`INSERT INTO text_elements(board_id, content, x, y, width, height, color, created_by, created_at, updated_at) 
+		 VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		te.BoardID, te.Content, te.X, te.Y, te.Width, te.Height, te.Color, te.CreatedBy, now, now)
 	if err != nil {
-		return models.Material{}, err
+		return models.TextElement{}, err
 	}
 	id, _ := res.LastInsertId()
-	return s.GetMaterial(ctx, id)
+	return s.GetTextElement(ctx, id)
 }
 
-func (s *Store) GetMaterial(ctx context.Context, id int64) (models.Material, error) {
-	var m models.Material
+func (s *Store) GetTextElement(ctx context.Context, id int64) (models.TextElement, error) {
+	var te models.TextElement
 	var c, up string
 	err := s.db.QueryRowContext(ctx,
-		`SELECT id, classroom_id, teacher_id, title, content, tags, created_at, updated_at FROM materials WHERE id = ?`, id).
-		Scan(&m.ID, &m.ClassroomID, &m.TeacherID, &m.Title, &m.Content, &m.Tags, &c, &up)
+		`SELECT te.id, te.board_id, te.content, te.x, te.y, te.width, te.height, te.color, te.created_by, u.name, te.created_at, te.updated_at
+		 FROM text_elements te JOIN users u ON te.created_by = u.id WHERE te.id = ?`, id).
+		Scan(&te.ID, &te.BoardID, &te.Content, &te.X, &te.Y, &te.Width, &te.Height, &te.Color, &te.CreatedBy, &te.CreatorName, &c, &up)
 	if err != nil {
-		return m, err
+		return te, err
 	}
-	m.CreatedAt, _ = time.Parse(time.RFC3339, c)
-	m.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-	return m, nil
+	te.CreatedAt, _ = time.Parse(time.RFC3339, c)
+	te.UpdatedAt, _ = time.Parse(time.RFC3339, up)
+	return te, nil
 }
 
-func (s *Store) ListMaterialsByClassroom(ctx context.Context, classroomID int64) ([]models.Material, error) {
+func (s *Store) ListTextElementsByBoard(ctx context.Context, boardID int64) ([]models.TextElement, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, classroom_id, teacher_id, title, content, tags, created_at, updated_at 
-		 FROM materials WHERE classroom_id = ? ORDER BY created_at DESC`, classroomID)
+		`SELECT te.id, te.board_id, te.content, te.x, te.y, te.width, te.height, te.color, te.created_by, u.name, te.created_at, te.updated_at
+		 FROM text_elements te JOIN users u ON te.created_by = u.id 
+		 WHERE te.board_id = ? ORDER BY te.updated_at DESC`, boardID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	out := []models.Material{}
+	out := []models.TextElement{}
 	for rows.Next() {
-		var m models.Material
+		var te models.TextElement
 		var c, up string
-		if err := rows.Scan(&m.ID, &m.ClassroomID, &m.TeacherID, &m.Title, &m.Content, &m.Tags, &c, &up); err != nil {
+		if err := rows.Scan(&te.ID, &te.BoardID, &te.Content, &te.X, &te.Y, &te.Width, &te.Height, &te.Color, &te.CreatedBy, &te.CreatorName, &c, &up); err != nil {
 			return nil, err
 		}
-		m.CreatedAt, _ = time.Parse(time.RFC3339, c)
-		m.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-		out = append(out, m)
+		te.CreatedAt, _ = time.Parse(time.RFC3339, c)
+		te.UpdatedAt, _ = time.Parse(time.RFC3339, up)
+		out = append(out, te)
 	}
 	return out, rows.Err()
 }
 
-func (s *Store) UpdateMaterial(ctx context.Context, id int64, m models.Material) (models.Material, error) {
+func (s *Store) UpdateTextElement(ctx context.Context, id int64, te models.TextElement) (models.TextElement, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE materials SET title = ?, content = ?, tags = ?, updated_at = ? WHERE id = ?`,
-		m.Title, m.Content, m.Tags, now, id)
+		`UPDATE text_elements SET content = ?, x = ?, y = ?, width = ?, height = ?, color = ?, updated_at = ? WHERE id = ?`,
+		te.Content, te.X, te.Y, te.Width, te.Height, te.Color, now, id)
 	if err != nil {
-		return models.Material{}, err
+		return models.TextElement{}, err
 	}
-	return s.GetMaterial(ctx, id)
+	return s.GetTextElement(ctx, id)
 }
 
-func (s *Store) DeleteMaterial(ctx context.Context, id int64) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM materials WHERE id = ?`, id)
+func (s *Store) DeleteTextElement(ctx context.Context, id int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM text_elements WHERE id = ?`, id)
 	return err
-}
-
-// Assignment methods
-
-func (s *Store) CreateAssignment(ctx context.Context, a models.Assignment) (models.Assignment, error) {
-	now := time.Now().UTC().Format(time.RFC3339)
-	due := a.DueDate.UTC().Format(time.RFC3339)
-	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO assignments(classroom_id, teacher_id, title, description, due_date, max_score, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
-		a.ClassroomID, a.TeacherID, a.Title, a.Description, due, a.MaxScore, now, now)
-	if err != nil {
-		return models.Assignment{}, err
-	}
-	id, _ := res.LastInsertId()
-	return s.GetAssignment(ctx, id)
-}
-
-func (s *Store) GetAssignment(ctx context.Context, id int64) (models.Assignment, error) {
-	var a models.Assignment
-	var due, c, up string
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, classroom_id, teacher_id, title, description, due_date, max_score, created_at, updated_at FROM assignments WHERE id = ?`, id).
-		Scan(&a.ID, &a.ClassroomID, &a.TeacherID, &a.Title, &a.Description, &due, &a.MaxScore, &c, &up)
-	if err != nil {
-		return a, err
-	}
-	a.DueDate, _ = time.Parse(time.RFC3339, due)
-	a.CreatedAt, _ = time.Parse(time.RFC3339, c)
-	a.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-	return a, nil
-}
-
-func (s *Store) ListAssignmentsByClassroom(ctx context.Context, classroomID int64) ([]models.Assignment, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, classroom_id, teacher_id, title, description, due_date, max_score, created_at, updated_at 
-		 FROM assignments WHERE classroom_id = ? ORDER BY due_date ASC`, classroomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	out := []models.Assignment{}
-	for rows.Next() {
-		var a models.Assignment
-		var due, c, up string
-		if err := rows.Scan(&a.ID, &a.ClassroomID, &a.TeacherID, &a.Title, &a.Description, &due, &a.MaxScore, &c, &up); err != nil {
-			return nil, err
-		}
-		a.DueDate, _ = time.Parse(time.RFC3339, due)
-		a.CreatedAt, _ = time.Parse(time.RFC3339, c)
-		a.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-		out = append(out, a)
-	}
-	return out, rows.Err()
-}
-
-func (s *Store) UpdateAssignment(ctx context.Context, id int64, a models.Assignment) (models.Assignment, error) {
-	now := time.Now().UTC().Format(time.RFC3339)
-	due := a.DueDate.UTC().Format(time.RFC3339)
-	_, err := s.db.ExecContext(ctx,
-		`UPDATE assignments SET title = ?, description = ?, due_date = ?, max_score = ?, updated_at = ? WHERE id = ?`,
-		a.Title, a.Description, due, a.MaxScore, now, id)
-	if err != nil {
-		return models.Assignment{}, err
-	}
-	return s.GetAssignment(ctx, id)
-}
-
-func (s *Store) DeleteAssignment(ctx context.Context, id int64) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM assignments WHERE id = ?`, id)
-	return err
-}
-
-// Submission methods
-
-func (s *Store) CreateSubmission(ctx context.Context, sub models.Submission) (models.Submission, error) {
-	now := time.Now().UTC().Format(time.RFC3339)
-	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO submissions(assignment_id, student_id, content, score, feedback, submitted_at, graded_at) VALUES(?, ?, ?, ?, ?, ?, ?)`,
-		sub.AssignmentID, sub.StudentID, sub.Content, sub.Score, sub.Feedback, now, nil)
-	if err != nil {
-		return models.Submission{}, err
-	}
-	id, _ := res.LastInsertId()
-	return s.GetSubmission(ctx, id)
-}
-
-func (s *Store) GetSubmission(ctx context.Context, id int64) (models.Submission, error) {
-	var sub models.Submission
-	var graded sql.NullString
-	var c string
-	err := s.db.QueryRowContext(ctx,
-		`SELECT s.id, s.assignment_id, s.student_id, u.name, s.content, s.score, s.feedback, s.submitted_at, s.graded_at
-		 FROM submissions s JOIN users u ON s.student_id = u.id WHERE s.id = ?`, id).
-		Scan(&sub.ID, &sub.AssignmentID, &sub.StudentID, &sub.StudentName, &sub.Content, &sub.Score, &sub.Feedback, &c, &graded)
-	if err != nil {
-		return sub, err
-	}
-	sub.SubmittedAt, _ = time.Parse(time.RFC3339, c)
-	if graded.Valid {
-		g, _ := time.Parse(time.RFC3339, graded.String)
-		sub.GradedAt = &g
-	}
-	return sub, nil
-}
-
-func (s *Store) ListSubmissionsByAssignment(ctx context.Context, assignmentID int64) ([]models.Submission, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT s.id, s.assignment_id, s.student_id, u.name, s.content, s.score, s.feedback, s.submitted_at, s.graded_at
-		 FROM submissions s JOIN users u ON s.student_id = u.id WHERE s.assignment_id = ? ORDER BY s.submitted_at DESC`, assignmentID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	out := []models.Submission{}
-	for rows.Next() {
-		var sub models.Submission
-		var graded sql.NullString
-		var c string
-		if err := rows.Scan(&sub.ID, &sub.AssignmentID, &sub.StudentID, &sub.StudentName, &sub.Content, &sub.Score, &sub.Feedback, &c, &graded); err != nil {
-			return nil, err
-		}
-		sub.SubmittedAt, _ = time.Parse(time.RFC3339, c)
-		if graded.Valid {
-			g, _ := time.Parse(time.RFC3339, graded.String)
-			sub.GradedAt = &g
-		}
-		out = append(out, sub)
-	}
-	return out, rows.Err()
-}
-
-func (s *Store) GetSubmissionByAssignmentAndStudent(ctx context.Context, assignmentID, studentID int64) (models.Submission, error) {
-	var sub models.Submission
-	var graded sql.NullString
-	var c string
-	err := s.db.QueryRowContext(ctx,
-		`SELECT s.id, s.assignment_id, s.student_id, u.name, s.content, s.score, s.feedback, s.submitted_at, s.graded_at
-		 FROM submissions s JOIN users u ON s.student_id = u.id WHERE s.assignment_id = ? AND s.student_id = ?`, assignmentID, studentID).
-		Scan(&sub.ID, &sub.AssignmentID, &sub.StudentID, &sub.StudentName, &sub.Content, &sub.Score, &sub.Feedback, &c, &graded)
-	if err != nil {
-		return sub, err
-	}
-	sub.SubmittedAt, _ = time.Parse(time.RFC3339, c)
-	if graded.Valid {
-		g, _ := time.Parse(time.RFC3339, graded.String)
-		sub.GradedAt = &g
-	}
-	return sub, nil
-}
-
-func (s *Store) GradeSubmission(ctx context.Context, id int64, score int, feedback string) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.db.ExecContext(ctx,
-		`UPDATE submissions SET score = ?, feedback = ?, graded_at = ? WHERE id = ?`,
-		score, feedback, now, id)
-	return err
-}
-
-// Attachment methods
-
-func (s *Store) CreateAttachment(ctx context.Context, a models.Attachment) (models.Attachment, error) {
-	now := time.Now().UTC().Format(time.RFC3339)
-	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO attachments(material_id, submission_id, filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		a.MaterialID, a.SubmissionID, a.Filename, a.OriginalName, a.MimeType, a.FileSize, a.FilePath, a.UploadedBy, now)
-	if err != nil {
-		return models.Attachment{}, err
-	}
-	id, _ := res.LastInsertId()
-	return s.GetAttachment(ctx, id)
-}
-
-func (s *Store) GetAttachment(ctx context.Context, id int64) (models.Attachment, error) {
-	var a models.Attachment
-	var c string
-	var mid, sid sql.NullInt64
-	err := s.db.QueryRowContext(ctx,
-		`SELECT id, material_id, submission_id, filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at FROM attachments WHERE id = ?`, id).
-		Scan(&a.ID, &mid, &sid, &a.Filename, &a.OriginalName, &a.MimeType, &a.FileSize, &a.FilePath, &a.UploadedBy, &c)
-	if err != nil {
-		return a, err
-	}
-	if mid.Valid {
-		a.MaterialID = &mid.Int64
-	}
-	if sid.Valid {
-		a.SubmissionID = &sid.Int64
-	}
-	a.CreatedAt, _ = time.Parse(time.RFC3339, c)
-	return a, nil
-}
-
-func (s *Store) ListAttachmentsByMaterial(ctx context.Context, materialID int64) ([]models.Attachment, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, material_id, submission_id, filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at 
-		 FROM attachments WHERE material_id = ? ORDER BY created_at DESC`, materialID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	out := []models.Attachment{}
-	for rows.Next() {
-		var a models.Attachment
-		var c string
-		var mid, sid sql.NullInt64
-		if err := rows.Scan(&a.ID, &mid, &sid, &a.Filename, &a.OriginalName, &a.MimeType, &a.FileSize, &a.FilePath, &a.UploadedBy, &c); err != nil {
-			return nil, err
-		}
-		if mid.Valid {
-			a.MaterialID = &mid.Int64
-		}
-		if sid.Valid {
-			a.SubmissionID = &sid.Int64
-		}
-		a.CreatedAt, _ = time.Parse(time.RFC3339, c)
-		out = append(out, a)
-	}
-	return out, rows.Err()
-}
-
-func (s *Store) ListAttachmentsBySubmission(ctx context.Context, submissionID int64) ([]models.Attachment, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT id, material_id, submission_id, filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at 
-		 FROM attachments WHERE submission_id = ? ORDER BY created_at DESC`, submissionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	out := []models.Attachment{}
-	for rows.Next() {
-		var a models.Attachment
-		var c string
-		var mid, sid sql.NullInt64
-		if err := rows.Scan(&a.ID, &mid, &sid, &a.Filename, &a.OriginalName, &a.MimeType, &a.FileSize, &a.FilePath, &a.UploadedBy, &c); err != nil {
-			return nil, err
-		}
-		if mid.Valid {
-			a.MaterialID = &mid.Int64
-		}
-		if sid.Valid {
-			a.SubmissionID = &sid.Int64
-		}
-		a.CreatedAt, _ = time.Parse(time.RFC3339, c)
-		out = append(out, a)
-	}
-	return out, rows.Err()
-}
-
-func (s *Store) DeleteAttachment(ctx context.Context, id int64) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id)
-	return err
-}
-
-// Collaborative Note methods
-
-func (s *Store) CreateCollaborativeNote(ctx context.Context, n models.CollaborativeNote) (models.CollaborativeNote, error) {
-	now := time.Now().UTC().Format(time.RFC3339)
-	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO collaborative_notes(material_id, classroom_id, created_by, title, content, is_public, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, ?)`,
-		n.MaterialID, n.ClassroomID, n.CreatedBy, n.Title, n.Content, n.IsPublic, now, now)
-	if err != nil {
-		return models.CollaborativeNote{}, err
-	}
-	id, _ := res.LastInsertId()
-	return s.GetCollaborativeNote(ctx, id)
-}
-
-func (s *Store) GetCollaborativeNote(ctx context.Context, id int64) (models.CollaborativeNote, error) {
-	var n models.CollaborativeNote
-	var mid sql.NullInt64
-	var c, up string
-	err := s.db.QueryRowContext(ctx,
-		`SELECT n.id, n.material_id, n.classroom_id, n.created_by, u.name, n.title, n.content, n.is_public, n.created_at, n.updated_at
-		 FROM collaborative_notes n JOIN users u ON n.created_by = u.id WHERE n.id = ?`, id).
-		Scan(&n.ID, &mid, &n.ClassroomID, &n.CreatedBy, &n.CreatorName, &n.Title, &n.Content, &n.IsPublic, &c, &up)
-	if err != nil {
-		return n, err
-	}
-	if mid.Valid {
-		n.MaterialID = &mid.Int64
-	}
-	n.CreatedAt, _ = time.Parse(time.RFC3339, c)
-	n.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-	return n, nil
-}
-
-func (s *Store) ListCollaborativeNotesByClassroom(ctx context.Context, classroomID int64) ([]models.CollaborativeNote, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT n.id, n.material_id, n.classroom_id, n.created_by, u.name, n.title, n.content, n.is_public, n.created_at, n.updated_at
-		 FROM collaborative_notes n JOIN users u ON n.created_by = u.id WHERE n.classroom_id = ? ORDER BY n.updated_at DESC`, classroomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	out := []models.CollaborativeNote{}
-	for rows.Next() {
-		var n models.CollaborativeNote
-		var mid sql.NullInt64
-		var c, up string
-		if err := rows.Scan(&n.ID, &mid, &n.ClassroomID, &n.CreatedBy, &n.CreatorName, &n.Title, &n.Content, &n.IsPublic, &c, &up); err != nil {
-			return nil, err
-		}
-		if mid.Valid {
-			n.MaterialID = &mid.Int64
-		}
-		n.CreatedAt, _ = time.Parse(time.RFC3339, c)
-		n.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-		out = append(out, n)
-	}
-	return out, rows.Err()
-}
-
-func (s *Store) UpdateCollaborativeNote(ctx context.Context, id int64, n models.CollaborativeNote) (models.CollaborativeNote, error) {
-	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.db.ExecContext(ctx,
-		`UPDATE collaborative_notes SET title = ?, content = ?, is_public = ?, updated_at = ? WHERE id = ?`,
-		n.Title, n.Content, n.IsPublic, now, id)
-	if err != nil {
-		return models.CollaborativeNote{}, err
-	}
-	return s.GetCollaborativeNote(ctx, id)
-}
-
-func (s *Store) DeleteCollaborativeNote(ctx context.Context, id int64) error {
-	_, err := s.db.ExecContext(ctx, `DELETE FROM collaborative_notes WHERE id = ?`, id)
-	return err
-}
-
-func (s *Store) AddNoteContributor(ctx context.Context, noteID, userID int64) error {
-	now := time.Now().UTC().Format(time.RFC3339)
-	_, err := s.db.ExecContext(ctx,
-		`INSERT OR IGNORE INTO note_contributors(note_id, user_id, contributed_at) VALUES(?, ?, ?)`,
-		noteID, userID, now)
-	return err
-}
-
-func (s *Store) GetNoteContributors(ctx context.Context, noteID int64) ([]models.User, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT u.id, u.email, u.name, u.role, u.status, u.created_at, u.updated_at
-		 FROM note_contributors nc JOIN users u ON nc.user_id = u.id WHERE nc.note_id = ?`, noteID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	out := []models.User{}
-	for rows.Next() {
-		var u models.User
-		var c, up string
-		if err := rows.Scan(&u.ID, &u.Email, &u.Name, &u.Role, &u.Status, &c, &up); err != nil {
-			return nil, err
-		}
-		u.CreatedAt, _ = time.Parse(time.RFC3339, c)
-		u.UpdatedAt, _ = time.Parse(time.RFC3339, up)
-		out = append(out, u)
-	}
-	return out, rows.Err()
 }
 
 // Discussion methods
@@ -930,8 +530,8 @@ func (s *Store) GetNoteContributors(ctx context.Context, noteID int64) ([]models
 func (s *Store) CreateDiscussion(ctx context.Context, d models.Discussion) (models.Discussion, error) {
 	now := time.Now().UTC().Format(time.RFC3339)
 	res, err := s.db.ExecContext(ctx,
-		`INSERT INTO discussions(classroom_id, material_id, user_id, message, parent_id, created_at) VALUES(?, ?, ?, ?, ?, ?)`,
-		d.ClassroomID, d.MaterialID, d.UserID, d.Message, d.ParentID, now)
+		`INSERT INTO discussions(board_id, user_id, message, parent_id, created_at) VALUES(?, ?, ?, ?, ?)`,
+		d.BoardID, d.UserID, d.Message, d.ParentID, now)
 	if err != nil {
 		return models.Discussion{}, err
 	}
@@ -941,17 +541,14 @@ func (s *Store) CreateDiscussion(ctx context.Context, d models.Discussion) (mode
 
 func (s *Store) GetDiscussion(ctx context.Context, id int64) (models.Discussion, error) {
 	var d models.Discussion
-	var mid, pid sql.NullInt64
+	var pid sql.NullInt64
 	var c string
 	err := s.db.QueryRowContext(ctx,
-		`SELECT d.id, d.classroom_id, d.material_id, d.user_id, u.name, d.message, d.parent_id, d.created_at
+		`SELECT d.id, d.board_id, d.user_id, u.name, d.message, d.parent_id, d.created_at
 		 FROM discussions d JOIN users u ON d.user_id = u.id WHERE d.id = ?`, id).
-		Scan(&d.ID, &d.ClassroomID, &mid, &d.UserID, &d.UserName, &d.Message, &pid, &c)
+		Scan(&d.ID, &d.BoardID, &d.UserID, &d.UserName, &d.Message, &pid, &c)
 	if err != nil {
 		return d, err
-	}
-	if mid.Valid {
-		d.MaterialID = &mid.Int64
 	}
 	if pid.Valid {
 		d.ParentID = &pid.Int64
@@ -960,11 +557,11 @@ func (s *Store) GetDiscussion(ctx context.Context, id int64) (models.Discussion,
 	return d, nil
 }
 
-func (s *Store) ListDiscussionsByClassroom(ctx context.Context, classroomID int64, limit, offset int) ([]models.Discussion, error) {
+func (s *Store) ListDiscussionsByBoard(ctx context.Context, boardID int64, limit, offset int) ([]models.Discussion, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT d.id, d.classroom_id, d.material_id, d.user_id, u.name, d.message, d.parent_id, d.created_at
-		 FROM discussions d JOIN users u ON d.user_id = u.id WHERE d.classroom_id = ? AND d.parent_id IS NULL
-		 ORDER BY d.created_at DESC LIMIT ? OFFSET ?`, classroomID, limit, offset)
+		`SELECT d.id, d.board_id, d.user_id, u.name, d.message, d.parent_id, d.created_at
+		 FROM discussions d JOIN users u ON d.user_id = u.id WHERE d.board_id = ? AND d.parent_id IS NULL
+		 ORDER BY d.created_at DESC LIMIT ? OFFSET ?`, boardID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -973,13 +570,10 @@ func (s *Store) ListDiscussionsByClassroom(ctx context.Context, classroomID int6
 	out := []models.Discussion{}
 	for rows.Next() {
 		var d models.Discussion
-		var mid, pid sql.NullInt64
+		var pid sql.NullInt64
 		var c string
-		if err := rows.Scan(&d.ID, &d.ClassroomID, &mid, &d.UserID, &d.UserName, &d.Message, &pid, &c); err != nil {
+		if err := rows.Scan(&d.ID, &d.BoardID, &d.UserID, &d.UserName, &d.Message, &pid, &c); err != nil {
 			return nil, err
-		}
-		if mid.Valid {
-			d.MaterialID = &mid.Int64
 		}
 		if pid.Valid {
 			d.ParentID = &pid.Int64
@@ -992,7 +586,7 @@ func (s *Store) ListDiscussionsByClassroom(ctx context.Context, classroomID int6
 
 func (s *Store) ListDiscussionReplies(ctx context.Context, parentID int64) ([]models.Discussion, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT d.id, d.classroom_id, d.material_id, d.user_id, u.name, d.message, d.parent_id, d.created_at
+		`SELECT d.id, d.board_id, d.user_id, u.name, d.message, d.parent_id, d.created_at
 		 FROM discussions d JOIN users u ON d.user_id = u.id WHERE d.parent_id = ? ORDER BY d.created_at ASC`, parentID)
 	if err != nil {
 		return nil, err
@@ -1002,13 +596,10 @@ func (s *Store) ListDiscussionReplies(ctx context.Context, parentID int64) ([]mo
 	out := []models.Discussion{}
 	for rows.Next() {
 		var d models.Discussion
-		var mid, pid sql.NullInt64
+		var pid sql.NullInt64
 		var c string
-		if err := rows.Scan(&d.ID, &d.ClassroomID, &mid, &d.UserID, &d.UserName, &d.Message, &pid, &c); err != nil {
+		if err := rows.Scan(&d.ID, &d.BoardID, &d.UserID, &d.UserName, &d.Message, &pid, &c); err != nil {
 			return nil, err
-		}
-		if mid.Valid {
-			d.MaterialID = &mid.Int64
 		}
 		if pid.Valid {
 			d.ParentID = &pid.Int64
@@ -1021,6 +612,38 @@ func (s *Store) ListDiscussionReplies(ctx context.Context, parentID int64) ([]mo
 
 func (s *Store) DeleteDiscussion(ctx context.Context, id int64) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM discussions WHERE id = ?`, id)
+	return err
+}
+
+// Attachment methods
+
+func (s *Store) CreateAttachment(ctx context.Context, a models.Attachment) (models.Attachment, error) {
+	now := time.Now().UTC().Format(time.RFC3339)
+	res, err := s.db.ExecContext(ctx,
+		`INSERT INTO attachments(filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+		a.Filename, a.OriginalName, a.MimeType, a.FileSize, a.FilePath, a.UploadedBy, now)
+	if err != nil {
+		return models.Attachment{}, err
+	}
+	id, _ := res.LastInsertId()
+	return s.GetAttachment(ctx, id)
+}
+
+func (s *Store) GetAttachment(ctx context.Context, id int64) (models.Attachment, error) {
+	var a models.Attachment
+	var c string
+	err := s.db.QueryRowContext(ctx,
+		`SELECT id, filename, original_name, mime_type, file_size, file_path, uploaded_by, created_at FROM attachments WHERE id = ?`, id).
+		Scan(&a.ID, &a.Filename, &a.OriginalName, &a.MimeType, &a.FileSize, &a.FilePath, &a.UploadedBy, &c)
+	if err != nil {
+		return a, err
+	}
+	a.CreatedAt, _ = time.Parse(time.RFC3339, c)
+	return a, nil
+}
+
+func (s *Store) DeleteAttachment(ctx context.Context, id int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM attachments WHERE id = ?`, id)
 	return err
 }
 
