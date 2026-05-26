@@ -27,7 +27,7 @@ export function LoginPage() {
         <h1 className="authHeading">Sign In</h1>
         <p className="authCopy">Enter your account details to continue to your collaborative workspace.</p>
         {error && (
-          <div className="banner error" style={{ marginTop: 20, marginBottom: 0 }}>
+          <div className="banner error" style={{ marginTop: 24, marginBottom: 0 }}>
             {error}
           </div>
         )}

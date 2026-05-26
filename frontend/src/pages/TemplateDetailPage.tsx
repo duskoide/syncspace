@@ -148,7 +148,7 @@ export function TemplateDetailPage() {
         )}
 
         {isOwner && (
-          <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ display: "flex", gap: 16 }}>
             <Link to="/templates/my" className="button">
               Manage My Templates
             </Link>

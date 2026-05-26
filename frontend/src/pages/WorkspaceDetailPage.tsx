@@ -91,7 +91,7 @@ export function WorkspaceDetailPage() {
             </>
           ) : (
             <div style={{ maxWidth: 500 }}>
-              <div className="field" style={{ marginBottom: 12 }}>
+              <div className="field" style={{ marginBottom: 16 }}>
                 <input
                   type="text"
                   value={editForm.name}
@@ -122,7 +122,7 @@ export function WorkspaceDetailPage() {
       {error && <div className="banner error" style={{ marginBottom: 16 }}>{error}</div>}
 
       {/* Action buttons */}
-      <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "flex", gap: 16, marginBottom: 24 }}>
         {!showEdit ? (
           <>
             <Link
@@ -183,7 +183,7 @@ export function WorkspaceDetailPage() {
                 className="text-soft"
                 style={{
                   fontSize: 14,
-                  marginBottom: 12,
+                  marginBottom: 16,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   display: "-webkit-box",

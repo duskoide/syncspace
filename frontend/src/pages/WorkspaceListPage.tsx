@@ -77,7 +77,7 @@ export function WorkspaceListPage() {
           >
             <h3 style={{ marginTop: 0 }}>{w.name}</h3>
             <p className="text-soft">{w.description || "No description"}</p>
-            <p className="text-soft" style={{ fontSize: 12, marginTop: 12 }}>
+            <p className="text-soft" style={{ fontSize: 12, marginTop: 16 }}>
               Created: {new Date(w.created_at).toLocaleDateString()}
             </p>
           </Link>
@@ -115,7 +115,7 @@ export function WorkspaceListPage() {
                   placeholder="Optional description"
                 />
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                 <button onClick={handleCreate}>Create</button>
                 <button className="ghost" onClick={() => setShowCreate(false)}>
                   Cancel

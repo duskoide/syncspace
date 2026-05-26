@@ -251,7 +251,7 @@ export function MyTemplatesPage() {
               <p className="text-soft" style={{ marginBottom: 8 }}>
                 {t.description || "No description"}
               </p>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                 <span className={`tag ${t.visibility === "public" ? "tag-success" : "tag-warning"}`}>
                   {t.visibility}
                 </span>

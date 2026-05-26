@@ -142,7 +142,7 @@ export function NoteEditorPage() {
             <div className="field">
               <label>Content</label>
               {!noteId && (
-                <p className="text-soft" style={{ fontSize: 13, marginBottom: 8 }}>
+                <p className="text-soft" style={{ fontSize: 14, marginBottom: 8 }}>
                   <strong>Tip:</strong> Save the note first, then you can upload images directly into it. For now, paste image URLs or use the Wikipedia sidebar.
                 </p>
               )}

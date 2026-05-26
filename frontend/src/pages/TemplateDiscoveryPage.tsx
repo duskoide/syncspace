@@ -52,7 +52,7 @@ export function TemplateDiscoveryPage() {
       </div>
 
       <div className="surfaceBlock" style={{ marginBottom: 24 }}>
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 16 }}>
           <input
             type="text"
             value={search}
@@ -90,7 +90,7 @@ export function TemplateDiscoveryPage() {
                   {t.type}
                 </span>
               </div>
-              <p className="text-soft" style={{ marginBottom: 12 }}>
+              <p className="text-soft" style={{ marginBottom: 16 }}>
                 {t.description || "No description"}
               </p>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 16 }}>

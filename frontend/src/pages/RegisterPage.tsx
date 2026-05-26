@@ -40,7 +40,7 @@ export function RegisterPage() {
         <h1 className="authHeading">Register</h1>
         <p className="authCopy">Create a user or creator account. Creators can share templates with the community.</p>
         {error && (
-          <div className="banner error" style={{ marginTop: 20, marginBottom: 0 }}>
+          <div className="banner error" style={{ marginTop: 24, marginBottom: 0 }}>
             {error}
           </div>
         )}
