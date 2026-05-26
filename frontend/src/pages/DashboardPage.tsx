@@ -5,9 +5,24 @@ export function DashboardPage() {
   const { user } = useAuth();
 
   const cards = [
-    { title: "Boards", desc: "View and manage your collaborative boards", link: "/boards", color: "#2563eb" },
-    { title: "Whiteboard", desc: "Create and collaborate on visual workspaces", link: "/boards", color: "#059669" },
-    { title: "Discussions", desc: "Participate in board discussions", link: "/boards", color: "#7c3aed" },
+    { 
+      title: "My Workspaces", 
+      desc: "Organize and access your personal notes", 
+      link: "/workspaces", 
+      color: "#2563eb" 
+    },
+    { 
+      title: "Template Gallery", 
+      desc: "Discover templates shared by the community", 
+      link: "/templates", 
+      color: "#059669" 
+    },
+    { 
+      title: "Research", 
+      desc: "Search Wikipedia and enrich your notes", 
+      link: "/workspaces", 
+      color: "#7c3aed" 
+    },
   ];
 
   return (
@@ -16,20 +31,22 @@ export function DashboardPage() {
         <div>
           <p className="eyebrow">Dashboard</p>
           <h1>Welcome, {user?.name}!</h1>
-          <p className="sub">Jump into boards, whiteboards, and discussion threads from one place.</p>
+          <p className="sub">
+            Your personal note-taking space. Create workspaces, take notes, and discover templates.
+          </p>
         </div>
         <div className="stats">
           <div className="stat">
-            <span className="statValue">{cards.length}</span>
-            <span className="statLabel">Workspace areas</span>
+            <span className="statValue">{user?.role === "superadmin" ? "Admin" : user?.role === "creator" ? "Creator" : "User"}</span>
+            <span className="statLabel">Role</span>
           </div>
           <div className="stat">
-            <span className="statValue">{user?.role === "superadmin" ? "Admin" : user?.role === "moderator" ? "Moderator" : "Member"}</span>
-            <span className="statLabel">Access level</span>
+            <span className="statValue">Active</span>
+            <span className="statLabel">Status</span>
           </div>
           <div className="stat">
-            <span className="statValue">Live</span>
-            <span className="statLabel">Realtime sync ready</span>
+            <span className="statValue">Sync</span>
+            <span className="statLabel">Ready</span>
           </div>
         </div>
       </div>
@@ -56,7 +73,16 @@ export function DashboardPage() {
         <div className="card lower focusCard">
           <h3 style={{ color: "#ffd2cf", marginBottom: 8 }}>Admin Actions</h3>
           <Link to="/admin" className="textLink">
-            Manage pending user approvals
+            Manage users and templates
+          </Link>
+        </div>
+      )}
+
+      {user?.role === "creator" && (
+        <div className="card lower focusCard">
+          <h3 style={{ color: "#efb449", marginBottom: 8 }}>Creator Tools</h3>
+          <Link to="/templates/my" className="textLink">
+            Manage your templates
           </Link>
         </div>
       )}

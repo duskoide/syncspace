@@ -10,7 +10,7 @@ export function Navbar() {
   const navLink = (to: string, label: string) => (
     <Link
       to={to}
-      className={`topbarLink${location.pathname === to ? " active" : ""}`}
+      className={`topbarLink${location.pathname === to || location.pathname.startsWith(to + "/") ? " active" : ""}`}
     >
       {label}
     </Link>
@@ -22,11 +22,12 @@ export function Navbar() {
         <div className="topbarNav">
           <Link to="/dashboard" className="brand">
             <span className="brandTitle">SyncSpace</span>
-            <span className="brandSub">Collaborative whiteboard workspace</span>
+            <span className="brandSub">Note-taking with templates</span>
           </Link>
           <div className="topbarLinks">
             {navLink("/dashboard", "Dashboard")}
-            {navLink("/boards", "Boards")}
+            {navLink("/workspaces", "Workspaces")}
+            {navLink("/templates", "Templates")}
             {user.role === "superadmin" && navLink("/admin", "Admin")}
           </div>
         </div>

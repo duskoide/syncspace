@@ -11,31 +11,54 @@ interface User {
   created_at: string;
 }
 
+interface Template {
+  id: number;
+  type: string;
+  name: string;
+  visibility: string;
+  creator_name: string;
+  is_hidden: boolean;
+  created_at: string;
+}
+
 export function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [filter, setFilter] = useState("pending");
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [userFilter, setUserFilter] = useState("active");
+  const [activeTab, setActiveTab] = useState<"users" | "templates">("users");
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
   const loadUsers = async () => {
-    setLoading(true);
     try {
-      const data = await api.listUsers({ status: filter });
+      const data = await api.listUsers({ status: userFilter });
       setUsers(data);
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const loadTemplates = async () => {
+    try {
+      const data = await api.listAllTemplates();
+      setTemplates(data);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   useEffect(() => {
-    loadUsers();
-  }, [filter]);
+    const loadData = async () => {
+      setLoading(true);
+      await Promise.all([loadUsers(), loadTemplates()]);
+      setLoading(false);
+    };
+    loadData();
+  }, [userFilter]);
 
-  const approve = async (id: number) => {
+  const activate = async (id: number) => {
     try {
-      await api.approveUser(id);
+      await api.activateUser(id);
       loadUsers();
     } catch (err: any) {
       alert(err.message);
@@ -51,13 +74,22 @@ export function AdminPage() {
     }
   };
 
+  const toggleTemplateVisibility = async (id: number, currentHidden: boolean) => {
+    try {
+      await api.setTemplateHidden(id, !currentHidden);
+      loadTemplates();
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   const getRoleTagClass = (role: string) => {
     switch (role) {
       case "superadmin":
         return "tag-danger";
-      case "moderator":
+      case "creator":
         return "tag-info";
-      case "collaborator":
+      case "user":
         return "tag-success";
       default:
         return "tag";
@@ -68,8 +100,6 @@ export function AdminPage() {
     switch (status) {
       case "active":
         return "tag-success";
-      case "pending":
-        return "tag-warning";
       case "suspended":
         return "tag-danger";
       default:
@@ -82,111 +112,178 @@ export function AdminPage() {
       <div className="hero">
         <div>
           <p className="eyebrow">Administration</p>
-          <h1>User Management</h1>
-          <p className="sub">Manage user accounts, approve pending registrations, and control access levels.</p>
+          <h1>Admin Dashboard</h1>
+          <p className="sub">Manage users and moderate community templates.</p>
         </div>
         <div className="stats">
           <div className="stat">
             <span className="statValue">{users.length}</span>
-            <span className="statLabel">
-              {filter === "" ? "Total users" : `${filter} users`}
-            </span>
+            <span className="statLabel">Users</span>
           </div>
           <div className="stat">
-            <span className="statValue">{user?.role === "superadmin" ? "Full" : "Limited"}</span>
-            <span className="statLabel">Admin access</span>
+            <span className="statValue">{templates.length}</span>
+            <span className="statLabel">Templates</span>
           </div>
         </div>
       </div>
 
-      <div className="card">
-        <div className="sectionHead" style={{ marginBottom: 24 }}>
-          <h2>Users</h2>
-          <div className="tabRow" style={{ border: "none", padding: 0 }}>
-            <button
-              onClick={() => setFilter("pending")}
-              className={`tabButton${filter === "pending" ? " active" : ""}`}
-            >
-              Pending
-            </button>
-            <button
-              onClick={() => setFilter("active")}
-              className={`tabButton${filter === "active" ? " active" : ""}`}
-            >
-              Active
-            </button>
-            <button
-              onClick={() => setFilter("suspended")}
-              className={`tabButton${filter === "suspended" ? " active" : ""}`}
-            >
-              Suspended
-            </button>
-            <button
-              onClick={() => setFilter("")}
-              className={`tabButton${filter === "" ? " active" : ""}`}
-            >
-              All
-            </button>
-          </div>
-        </div>
+      {/* Tab Navigation */}
+      <div className="tabRow" style={{ marginBottom: 24 }}>
+        <button
+          onClick={() => setActiveTab("users")}
+          className={`tabButton${activeTab === "users" ? " active" : ""}`}
+        >
+          Users
+        </button>
+        <button
+          onClick={() => setActiveTab("templates")}
+          className={`tabButton${activeTab === "templates" ? " active" : ""}`}
+        >
+          Templates
+        </button>
+      </div>
 
-        {loading ? (
-          <div className="emptyState">
-            <p>Loading users...</p>
-          </div>
-        ) : users.length === 0 ? (
-          <div className="emptyState">
-            <p>No users found</p>
-          </div>
-        ) : (
-          <div className="adminTable">
-            <div className="adminTableHeader">
-              <div className="adminTableCell">Name</div>
-              <div className="adminTableCell">Email</div>
-              <div className="adminTableCell">Role</div>
-              <div className="adminTableCell">Status</div>
-              <div className="adminTableCell">Actions</div>
+      {activeTab === "users" && (
+        <div className="card">
+          <div className="sectionHead" style={{ marginBottom: 24 }}>
+            <h2>Users</h2>
+            <div className="tabRow" style={{ border: "none", padding: 0 }}>
+              <button
+                onClick={() => setUserFilter("active")}
+                className={`tabButton${userFilter === "active" ? " active" : ""}`}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => setUserFilter("suspended")}
+                className={`tabButton${userFilter === "suspended" ? " active" : ""}`}
+              >
+                Suspended
+              </button>
+              <button
+                onClick={() => setUserFilter("")}
+                className={`tabButton${userFilter === "" ? " active" : ""}`}
+              >
+                All
+              </button>
             </div>
-            <div className="adminTableBody">
-              {users.map((u) => (
-                <div key={u.id} className="adminTableRow">
-                  <div className="adminTableCell">
-                    <strong>{u.name}</strong>
-                  </div>
-                  <div className="adminTableCell metaText">{u.email}</div>
-                  <div className="adminTableCell">
-                    <span className={`tag ${getRoleTagClass(u.role)}`}>
-                      {u.role}
-                    </span>
-                  </div>
-                  <div className="adminTableCell">
-                    <span className={`tag ${getStatusTagClass(u.status)}`}>
-                      {u.status}
-                    </span>
-                  </div>
-                  <div className="adminTableCell">
-                    <div className="actions">
-                      {u.status === "pending" && (
-                        <button onClick={() => approve(u.id)}>
-                          Approve
-                        </button>
-                      )}
-                      {u.status === "active" && u.id !== user?.id && (
-                        <button
-                          className="danger"
-                          onClick={() => suspend(u.id)}
-                        >
-                          Suspend
-                        </button>
-                      )}
+          </div>
+
+          {loading ? (
+            <div className="emptyState">
+              <p>Loading users...</p>
+            </div>
+          ) : users.length === 0 ? (
+            <div className="emptyState">
+              <p>No users found</p>
+            </div>
+          ) : (
+            <div className="adminTable">
+              <div className="adminTableHeader">
+                <div className="adminTableCell">Name</div>
+                <div className="adminTableCell">Email</div>
+                <div className="adminTableCell">Role</div>
+                <div className="adminTableCell">Status</div>
+                <div className="adminTableCell">Actions</div>
+              </div>
+              <div className="adminTableBody">
+                {users.map((u) => (
+                  <div key={u.id} className="adminTableRow">
+                    <div className="adminTableCell">
+                      <strong>{u.name}</strong>
+                    </div>
+                    <div className="adminTableCell metaText">{u.email}</div>
+                    <div className="adminTableCell">
+                      <span className={`tag ${getRoleTagClass(u.role)}`}>
+                        {u.role}
+                      </span>
+                    </div>
+                    <div className="adminTableCell">
+                      <span className={`tag ${getStatusTagClass(u.status)}`}>
+                        {u.status}
+                      </span>
+                    </div>
+                    <div className="adminTableCell">
+                      <div className="actions">
+                        {u.status === "suspended" && (
+                          <button onClick={() => activate(u.id)}>
+                            Activate
+                          </button>
+                        )}
+                        {u.status === "active" && u.id !== user?.id && (
+                          <button
+                            className="danger"
+                            onClick={() => suspend(u.id)}
+                          >
+                            Suspend
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "templates" && (
+        <div className="card">
+          <div className="sectionHead" style={{ marginBottom: 24 }}>
+            <h2>Template Moderation</h2>
+            <p className="text-soft">Hide or unhide templates from public discovery.</p>
           </div>
-        )}
-      </div>
+
+          {loading ? (
+            <div className="emptyState">
+              <p>Loading templates...</p>
+            </div>
+          ) : templates.length === 0 ? (
+            <div className="emptyState">
+              <p>No templates found</p>
+            </div>
+          ) : (
+            <div className="adminTable">
+              <div className="adminTableHeader">
+                <div className="adminTableCell">Name</div>
+                <div className="adminTableCell">Type</div>
+                <div className="adminTableCell">Creator</div>
+                <div className="adminTableCell">Visibility</div>
+                <div className="adminTableCell">Actions</div>
+              </div>
+              <div className="adminTableBody">
+                {templates.map((t) => (
+                  <div key={t.id} className="adminTableRow">
+                    <div className="adminTableCell">
+                      <strong>{t.name}</strong>
+                    </div>
+                    <div className="adminTableCell">
+                      <span className={`tag tag-${t.type === "workspace" ? "info" : "success"}`}>
+                        {t.type}
+                      </span>
+                    </div>
+                    <div className="adminTableCell metaText">{t.creator_name}</div>
+                    <div className="adminTableCell">
+                      <span className={`tag ${t.is_hidden ? "tag-danger" : "tag-success"}`}>
+                        {t.is_hidden ? "Hidden" : "Visible"}
+                      </span>
+                    </div>
+                    <div className="adminTableCell">
+                      <button
+                        onClick={() => toggleTemplateVisibility(t.id, t.is_hidden)}
+                        className={t.is_hidden ? "" : "danger"}
+                      >
+                        {t.is_hidden ? "Unhide" : "Hide"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -5,8 +5,11 @@ import { Navbar } from "./components/Navbar";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
-import { BoardPage } from "./pages/BoardPage";
 import { AdminPage } from "./pages/AdminPage";
+import { WorkspaceListPage } from "./pages/WorkspaceListPage";
+import { NoteEditorPage } from "./pages/NoteEditorPage";
+import { TemplateDiscoveryPage } from "./pages/TemplateDiscoveryPage";
+import { TemplateDetailPage } from "./pages/TemplateDetailPage";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -35,11 +38,61 @@ export function App() {
             }
           />
           <Route
-            path="/boards"
+            path="/workspaces"
             element={
               <ProtectedRoute>
                 <Layout>
-                  <BoardPage />
+                  <WorkspaceListPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workspaces/:workspaceId"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <WorkspaceListPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workspaces/:workspaceId/notes/new"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <NoteEditorPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workspaces/:workspaceId/notes/:noteId"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <NoteEditorPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/templates"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <TemplateDiscoveryPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/templates/:id"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <TemplateDetailPage />
                 </Layout>
               </ProtectedRoute>
             }
