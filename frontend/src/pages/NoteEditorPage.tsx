@@ -155,7 +155,7 @@ export function NoteEditorPage() {
                 <button
                   type="button"
                   className="ghost"
-                  onClick={() => navigate(`/templates/create?type=note&source_id=${note.id}`)}
+                  onClick={() => navigate(`/templates/my?type=note&source_id=${note.id}`)}
                 >
                   Create Template from Note
                 </button>

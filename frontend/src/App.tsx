@@ -7,6 +7,7 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { AdminPage } from "./pages/AdminPage";
 import { WorkspaceListPage } from "./pages/WorkspaceListPage";
+import { WorkspaceDetailPage } from "./pages/WorkspaceDetailPage";
 import { NoteEditorPage } from "./pages/NoteEditorPage";
 import { TemplateDiscoveryPage } from "./pages/TemplateDiscoveryPage";
 import { TemplateDetailPage } from "./pages/TemplateDetailPage";
@@ -53,7 +54,7 @@ export function App() {
             element={
               <ProtectedRoute>
                 <Layout>
-                  <WorkspaceListPage />
+                  <WorkspaceDetailPage />
                 </Layout>
               </ProtectedRoute>
             }
