@@ -1074,3 +1074,152 @@ button.active {
   opacity: 0.6;
   transform: none;
 }
+
+/* TipTap Editor Styles */
+.tiptap-wrapper {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-strong);
+  overflow: hidden;
+}
+
+.tiptap-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  flex-wrap: wrap;
+}
+
+.tiptap-toolbar button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.tiptap-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.tiptap-toolbar button.active {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+}
+
+.tiptap-content {
+  min-height: 400px;
+  padding: 16px;
+}
+
+.tiptap-content .ProseMirror {
+  outline: none;
+  min-height: 400px;
+}
+
+.tiptap-content .ProseMirror p {
+  margin: 0 0 12px 0;
+  line-height: 1.6;
+}
+
+.tiptap-content .ProseMirror h1,
+.tiptap-content .ProseMirror h2 {
+  margin: 24px 0 12px 0;
+}
+
+.tiptap-content .ProseMirror ul,
+.tiptap-content .ProseMirror ol {
+  margin: 12px 0;
+  padding-left: 24px;
+}
+
+.tiptap-content .ProseMirror li {
+  margin: 4px 0;
+}
+
+.tiptap-content .ProseMirror img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.tiptap-content .ProseMirror blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 16px 0;
+  padding-left: 16px;
+  color: var(--text-soft);
+}
+
+/* Wikipedia Sidebar */
+.wikiSidebar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.wikiSidebar h3 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+}
+
+.wikiSearch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.wikiSearch input {
+  flex: 1;
+}
+
+.wikiSearch button {
+  white-space: nowrap;
+}
+
+.wikiResult {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.wikiResult h4 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.wikiContent {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-soft);
+  margin-bottom: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Template Cards */
+.tag-workspace {
+  background: rgba(94, 168, 187, 0.2);
+  color: #5ea8bb;
+}
+
+.tag-note {
+  background: rgba(107, 198, 164, 0.2);
+  color: #6bc6a4;
+}
+
+/* Editor Loading */
+.editor-loading {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-soft);
+}
