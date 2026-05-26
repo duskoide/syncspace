@@ -102,6 +102,8 @@ export function AdminPage() {
         return "tag-success";
       case "suspended":
         return "tag-danger";
+      case "pending":
+        return "tag-warning";
       default:
         return "tag";
     }
@@ -155,6 +157,12 @@ export function AdminPage() {
                 Active
               </button>
               <button
+                onClick={() => setUserFilter("pending")}
+                className={`tabButton${userFilter === "pending" ? " active" : ""}`}
+              >
+                Pending
+              </button>
+              <button
                 onClick={() => setUserFilter("suspended")}
                 className={`tabButton${userFilter === "suspended" ? " active" : ""}`}
               >
@@ -205,6 +213,11 @@ export function AdminPage() {
                     </div>
                     <div className="adminTableCell">
                       <div className="actions">
+                        {u.status === "pending" && (
+                          <button onClick={() => activate(u.id)}>
+                            Approve
+                          </button>
+                        )}
                         {u.status === "suspended" && (
                           <button onClick={() => activate(u.id)}>
                             Activate

@@ -1,0 +1,30 @@
+# Backend build artifacts
+backend/syncspace
+backend/*.db
+backend/*.db-*
+
+# Frontend build artifacts  
+frontend/dist/
+frontend/web-build/
+frontend/node_modules/
+
+# Data files
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Git
+.git/
+.gitignore
+
+# Documentation (keep for now, but can exclude)
+# docs/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

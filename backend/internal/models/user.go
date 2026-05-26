@@ -7,7 +7,7 @@ type User struct {
 	Email        string    `json:"email"`
 	Name         string    `json:"name"`
 	Role         string    `json:"role"`    // superadmin, creator, user
-	Status       string    `json:"status"`  // active, suspended (default: active on register)
+	Status       string    `json:"status"`  // pending, active, suspended
 	PasswordHash string    `json:"-"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`

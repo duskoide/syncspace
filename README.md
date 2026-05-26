@@ -1,172 +1,171 @@
-# SyncSpace - Collaborative Whiteboard & Forum Platform
+# SyncSpace - Collaborative Note-Taking & Template Sharing Platform
 
-SyncSpace is a self-hosted collaborative whiteboard and forum platform built for the II2210 Teknologi Platform course assignment (Tugas 2).
+SyncSpace is a self-hosted collaborative note-taking platform with template sharing, built for the II2210 Teknologi Platform course assignment.
 
 ## Theme
-Education & Learning Tools - Collaborative Whiteboard Forum
+Education & Learning Tools - Note-Taking & Template Sharing Platform
 
 ## Stack
-- **Backend:** Go 1.23 + REST API + WebSocket
+- **Backend:** Go 1.23 + REST API
 - **Frontend:** React 18 + Vite + TypeScript + React Router
 - **Database:** SQLite (WAL mode)
 - **Authentication:** JWT with bcrypt password hashing
-- **Real-time:** WebSocket for live collaboration
 - **Containerization:** Docker + Docker Compose
-
-## Features
-
-### Three User Roles (Assignment Requirement)
-1. **Superadmin** - Platform administrator, approve/suspend users, manage all boards
-2. **Moderator** - Create and manage boards, invite collaborators, moderate content
-3. **Collaborator** - Join boards, add text elements, participate in discussions
-
-### Core Features
-- **User Registration & Approval** - New users register with pending status, superadmin approves before access
-- **Board Management** - Moderators create collaborative whiteboards with descriptions
-- **Board Memberships** - Join boards as viewer or editor, leave boards anytime
-- **Collaborative Text Elements** - Add draggable sticky notes anywhere on the whiteboard
-- **Real-time Collaboration** - WebSocket-powered live updates for text elements and discussions
-- **Discussion Threads** - Threaded conversations attached to each board
-- **File Uploads** - Support for images, videos, PDFs, documents (max 10MB)
-
-### Producer-Consumer Interaction Flow
-**Moderator (Producer):**
-- Creates a board (whiteboard space)
-- Manages board memberships and collaborator roles
-- Can edit/delete any content on their boards
-
-**Collaborator (Consumer):**
-- Joins boards via membership
-- Adds text elements (sticky notes) to the whiteboard
-- Participates in board discussions
-- Can edit their own content
 
 ## Quickstart
 
 ### With Docker Compose (Recommended)
 ```bash
-docker-compose up --build
+git clone <repo-url> && cd syncspace
+docker-compose up --build -d
 ```
-- Backend: http://localhost:8080
-- Frontend: http://localhost:3000
+
+The app is available at http://localhost:3000
+
+### With Cloudflare Tunnel (Public Access)
+1. Copy `.env.example` to `.env`: `cp .env.example .env`
+2. Create a Cloudflare Tunnel in [Zero Trust Dashboard](https://one.dash.cloudflare.com/) → Networks → Tunnels
+3. Choose "Docker" connector type, copy the token
+4. Set the tunnel's public hostname origin to: `http://frontend:80`
+5. Paste the token in `.env` as `TUNNEL_TOKEN=your_token_here`
+6. Start with tunnel profile: `docker-compose --profile tunnel up --build -d`
 
 ### Manual Development
-
-#### Backend
 ```bash
-cd backend
-go mod download
-go run ./cmd/syncspace
-```
+# Backend
+cd backend && go run ./cmd/syncspace
 
-#### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
+# Frontend
+cd frontend && npm install && npm run dev
 ```
 
 ## Default Credentials
 - **Superadmin:** `admin@syncspace.edu` / `admin123`
 
+## User Roles
+
+| Role | Capabilities |
+|------|-------------|
+| **Superadmin** | Manage users (approve/suspend), moderate templates, full access |
+| **Creator** | Create notes/workspaces, create and share templates |
+| **User** | Create notes/workspaces, browse and use templates |
+
+New registrations start with **pending** status and must be approved by a superadmin.
+
+## Features
+
+### Core
+- **Three User Roles** - Superadmin, Creator, User with distinct capabilities
+- **Registration & Approval** - Users register, superadmin approves before access
+- **Workspaces** - Personal workspace for organizing notes
+- **Rich Text Notes** - TipTap editor with headings, lists, bold/italic
+- **Inline Images** - Upload and embed images in notes
+- **Template Sharing** - Creators share workspace/note templates (public or link-only)
+- **Template Cloning** - Users clone templates into their own workspaces
+- **Template Moderation** - Superadmin can hide/unhide templates
+- **Wikipedia Sidebar** - Search Wikipedia and insert summaries into notes
+
+### Producer-Consumer Flow
+- **Creator (Producer):** Creates templates from their workspaces/notes, shares them publicly or via link
+- **User (Consumer):** Discovers and clones templates to create their own copies
+- Templates are snapshots - clones are independent and won't change when the original is updated
+
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/register` - Register new user (roles: moderator/collaborator, status: pending)
-- `POST /api/auth/login` - Login and receive JWT
-- `GET /api/auth/me` - Get current user info
+- `POST /api/auth/register` - Register (status: pending, requires superadmin approval)
+- `POST /api/auth/login` - Login (blocked if pending or suspended)
+- `GET /api/auth/me` - Get current user
 
 ### Admin (Superadmin only)
-- `GET /api/admin/users` - List all users
-- `PUT /api/admin/users/{id}/approve` - Approve pending user
-- `PUT /api/admin/users/{id}/suspend` - Suspend user
-- `DELETE /api/admin/users/{id}` - Delete user
+- `GET /api/admin/users` - List users (filter by role/status)
+- `PUT /api/admin/users/{id}/activate` - Approve/activate a pending user
+- `PUT /api/admin/users/{id}/suspend` - Suspend a user
+- `DELETE /api/admin/users/{id}` - Delete a user
+- `GET /api/admin/templates` - List all templates
+- `PATCH /api/admin/templates/{id}` - Hide/unhide template
 
-### Boards
-- `GET /api/boards` - List my boards (all boards for superadmin)
-- `POST /api/boards` - Create board (moderator/superadmin)
-- `GET /api/boards/{id}` - Get board details
-- `PUT /api/boards/{id}` - Update board (moderator only)
-- `DELETE /api/boards/{id}` - Delete board (moderator only)
-- `POST /api/boards/{id}/join` - Join board (collaborator)
-- `DELETE /api/boards/{id}/leave` - Leave board
-- `GET /api/boards/{id}/members` - List board members
+### Workspaces
+- `GET /api/workspaces` - List my workspaces
+- `POST /api/workspaces` - Create workspace
+- `GET /api/workspaces/{id}` - Get workspace
+- `PUT /api/workspaces/{id}` - Update workspace
+- `DELETE /api/workspaces/{id}` - Delete workspace
 
-### Board Memberships
-- `PUT /api/memberships/{id}/role` - Update member role (moderator only)
-- `DELETE /api/boards/{id}/members/{member_id}` - Remove member (moderator only)
+### Notes
+- `GET /api/workspaces/{id}/notes` - List notes in workspace
+- `POST /api/workspaces/{id}/notes` - Create note
+- `GET /api/notes/{id}` - Get note
+- `PUT /api/notes/{id}` - Update note
+- `DELETE /api/notes/{id}` - Delete note
 
-### Text Elements (Whiteboard Notes)
-- `GET /api/text-elements?board_id={id}` - List all notes on a board
-- `POST /api/text-elements` - Create new note (editor role required)
-- `GET /api/text-elements/{id}` - Get note details
-- `PUT /api/text-elements/{id}` - Update note content/position
-- `DELETE /api/text-elements/{id}` - Delete note
+### Templates
+- `GET /api/templates` - Browse public templates (searchable)
+- `GET /api/templates/my` - List my templates (creator)
+- `POST /api/templates` - Create template from workspace/note
+- `PUT /api/templates/{id}` - Update template metadata
+- `POST /api/templates/{id}/update-content` - Update template content from source
+- `DELETE /api/templates/{id}` - Delete template
+- `POST /api/templates/{id}/clone` - Clone template to workspace
 
-### Discussions
-- `GET /api/discussions?board_id={id}` - List board discussions
-- `POST /api/discussions` - Post message to board
-- `GET /api/discussions/{id}/replies` - Get discussion replies
-- `DELETE /api/discussions/{id}` - Delete discussion
-
-### WebSocket
-- `GET /ws?token={jwt}&room=board_{id}` - Real-time collaboration
-
-### Files
-- `POST /api/upload` - Upload file
+### File Upload
+- `POST /api/upload` - Upload image (multipart/form-data)
 - `GET /api/files/{id}` - Download file
+- `DELETE /api/files/{id}` - Delete file
+
+### Wikipedia
+- `GET /api/wiki/summary?topic={topic}` - Get Wikipedia summary
+
+## Docker Architecture
+
+### Container Layout
+```
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│   cloudflared    │────▶│    frontend      │────▶│    backend       │
+│  (optional)      │     │    (nginx)       │     │    (Go API)      │
+│  :443 → :80     │     │    :80 → :3000   │     │    :8080         │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
+                                │                         │
+                                │    Docker Network        │
+                                │    (syncspace)           │
+                                │                         │
+                         ┌──────┴─────────────────────────┘
+                         │
+                    ┌────▼────┐
+                    │  data/  │  (SQLite DB + uploads)
+                    └─────────┘
+```
+
+### How Docker Helps Deployment
+1. **Consistent Environment** - Same runtime across dev, staging, and production
+2. **Isolated Services** - Backend, frontend, and tunnel run in separate containers
+3. **One Command Deploy** - `docker-compose up --build -d` starts everything
+4. **Nginx Reverse Proxy** - Frontend container proxies `/api` to backend internally
+5. **Persistent Data** - SQLite DB and uploaded files stored in mounted volumes
+6. **Easy Updates** - Rebuild and restart without manual configuration
+
+### Container Details
+| Container | Image | Purpose | Port |
+|-----------|-------|---------|------|
+| backend | Custom (Go 1.23-alpine) | REST API + auth + business logic | 8080 (internal) |
+| frontend | Custom (Node + nginx) | React SPA served by nginx | 3000:80 |
+| cloudflared | cloudflare/cloudflared | Optional public access via tunnel | - |
 
 ## Database Schema
 
-### Core Tables
-- `users` - Authentication & roles (superadmin, moderator, collaborator)
-- `boards` - Collaborative whiteboard spaces
-- `board_memberships` - User-board relationships with roles (viewer/editor)
-- `text_elements` - Draggable sticky notes (x, y, content, color)
-- `discussions` - Threaded chat messages per board
-- `attachments` - File metadata
-
-## Interaction Sequences
-
-### Sequence 1: Moderator Creates Board, Collaborator Joins and Adds Content
-```
-1. Moderator creates Board
-2. Moderator shares board access (or it's public)
-3. Collaborator discovers/joins Board
-4. Collaborator adds TextElement to whiteboard
-5. Real-time sync broadcasts to all connected users
-6. Moderator and Collaborator see updates live
-```
-
-### Sequence 2: Discussion Thread
-```
-1. Any member posts Discussion message
-2. WebSocket broadcasts to board room
-3. All connected members see message instantly
-4. Members can reply creating threaded discussions
-```
-
-## Architecture
-Layered architecture pattern:
-- **Presentation Layer** - React frontend with whiteboard canvas
-- **API Layer** - Go HTTP handlers + WebSocket hub
-- **Service Layer** - Business logic (boards, memberships, text elements)
-- **Data Access Layer** - SQLite store with WAL mode
-- **Data Layer** - SQLite + File system for uploads
-
-## UI Design
-- Dark theme with glass-morphism cards
-- Collaborative whiteboard with grid background
-- Draggable sticky notes with color coding
-- Real-time status indicators
-- Responsive layout for desktop and mobile
+- `users` - Authentication & roles (superadmin, creator, user) with status (pending, active, suspended)
+- `workspaces` - User workspaces for organizing notes
+- `notes` - Rich text notes (HTML content from TipTap editor)
+- `templates` - Shareable workspace/note snapshots (public or link visibility)
+- `note_images` - Inline image metadata for notes
 
 ## References
-- Go net/http documentation - https://pkg.go.dev/net/http
-- JWT authentication pattern - https://datatracker.ietf.org/doc/html/rfc7519
-- Layered architecture - "Patterns of Enterprise Application Architecture" by Martin Fowler
-- SQLite WAL mode - https://sqlite.org/wal.html
-- WebSocket API - https://developer.mozilla.org/en-US/docs/Web/API/WebSocket
+- Go net/http - https://pkg.go.dev/net/http
+- JWT Authentication - https://datatracker.ietf.org/doc/html/rfc7519
+- Layered Architecture - "Patterns of Enterprise Application Architecture" by Martin Fowler
+- SQLite WAL Mode - https://sqlite.org/wal.html
+- TipTap Editor - https://tiptap.dev
+- Cloudflare Tunnel - https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/
 
 ## License
 Academic project for II2210 Teknologi Platform - Institut Teknologi Bandung.

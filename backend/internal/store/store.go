@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS users (
 	password_hash TEXT NOT NULL,
 	name TEXT NOT NULL,
 	role TEXT NOT NULL CHECK(role IN ('superadmin', 'creator', 'user')),
-	status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'suspended')),
+	status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'active', 'suspended')),
 	created_at TEXT NOT NULL,
 	updated_at TEXT NOT NULL
 );

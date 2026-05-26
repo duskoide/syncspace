@@ -37,7 +37,7 @@ func (s *Service) Register(ctx context.Context, req models.RegisterRequest) (mod
 		PasswordHash: hash,
 		Name:         strings.TrimSpace(req.Name),
 		Role:         req.Role,
-		Status:       "active", // Auto-approved on registration
+		Status:       "pending",
 	}
 
 	return s.store.CreateUser(ctx, u)
@@ -56,6 +56,9 @@ func (s *Service) Login(ctx context.Context, req models.LoginRequest) (models.To
 		return models.TokenPair{}, models.User{}, fmt.Errorf("database error: %w", err)
 	}
 
+	if u.Status == "pending" {
+		return models.TokenPair{}, models.User{}, fmt.Errorf("account pending approval")
+	}
 	if u.Status == "suspended" {
 		return models.TokenPair{}, models.User{}, fmt.Errorf("account suspended")
 	}

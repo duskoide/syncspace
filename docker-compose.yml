@@ -3,14 +3,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.backend
-    ports:
-      - "8080:8080"
+    restart: unless-stopped
     volumes:
       - ./data:/data
       - ./uploads:/uploads
     environment:
       - SYNCSPACE_ADDR=:8080
       - SYNCSPACE_DB_PATH=/data/syncspace.db
+    networks:
+      - syncspace
 
   frontend:
     build:
@@ -20,3 +21,23 @@ services:
       - "3000:80"
     depends_on:
       - backend
+    networks:
+      - syncspace
+
+  # Optional: Cloudflare Tunnel for public access
+  # Start with: docker-compose --profile tunnel up -d
+  # Requires TUNNEL_TOKEN in .env file
+  # Set tunnel origin to http://frontend:80 in Cloudflare dashboard
+  cloudflared:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run --token ${TUNNEL_TOKEN}
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    networks:
+      - syncspace
+
+networks:
+  syncspace:
+    driver: bridge

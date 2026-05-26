@@ -24,7 +24,7 @@ export function RegisterPage() {
         <div className="card authCard focusCard">
           <p className="eyebrow authTitle">Account Created</p>
           <h2 className="authHeading" style={{ color: "#ccefdc" }}>Registration Successful</h2>
-          <p className="authCopy">Your account is ready! You can now log in.</p>
+          <p className="authCopy">Your account is pending approval from a superadmin. You will be able to log in once your account is activated.</p>
           <p className="authFooter">
             <Link to="/login" className="textLink">Go to Login</Link>
           </p>

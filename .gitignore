@@ -61,8 +61,8 @@ uploads/
 !uploads/classrooms/.gitkeep
 
 # Docker
-.dockerignore
 docker-compose.override.yml
+docker-compose.prod.yml
 
 # Logs
 *.log
