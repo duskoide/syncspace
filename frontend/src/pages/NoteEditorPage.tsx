@@ -21,7 +21,10 @@ interface Workspace {
 }
 
 export function NoteEditorPage() {
-  const { workspaceId, noteId } = useParams<{ workspaceId: string; noteId: string }>();
+  const { workspaceId, noteId } = useParams<{
+    workspaceId: string;
+    noteId: string;
+  }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [note, setNote] = useState<Note | null>(null);
@@ -37,7 +40,7 @@ export function NoteEditorPage() {
     try {
       setLoading(true);
       const wsId = parseInt(workspaceId!);
-      
+
       // Fetch workspace
       const wsData = await api.getWorkspace(wsId);
       setWorkspace(wsData);
@@ -102,10 +105,19 @@ export function NoteEditorPage() {
         {/* Main Editor Area */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="surfaceBlock">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
               <div>
                 <p className="eyebrow">{workspace.name}</p>
-                <h1 style={{ margin: 0 }}>{noteId ? "Edit Note" : "New Note"}</h1>
+                <h1 style={{ margin: 0 }}>
+                  {noteId ? "Edit Note" : "New Note"}
+                </h1>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -126,7 +138,11 @@ export function NoteEditorPage() {
               </div>
             </div>
 
-            {error && <div className="banner error" style={{ marginBottom: 16 }}>{error}</div>}
+            {error && (
+              <div className="banner error" style={{ marginBottom: 16 }}>
+                {error}
+              </div>
+            )}
 
             <div className="field" style={{ marginBottom: 16 }}>
               <label>Title</label>
@@ -142,8 +158,13 @@ export function NoteEditorPage() {
             <div className="field">
               <label>Content</label>
               {!noteId && (
-                <p className="text-soft" style={{ fontSize: 14, marginBottom: 8 }}>
-                  <strong>Tip:</strong> Save the note first, then you can upload images directly into it. For now, paste image URLs or use the Wikipedia sidebar.
+                <p
+                  className="text-soft"
+                  style={{ fontSize: 14, marginBottom: 8 }}
+                >
+                  <strong>Tip:</strong> Save the note first, then you can upload
+                  images directly into it. For now, paste image URLs or use the
+                  Wikipedia sidebar.
                 </p>
               )}
               <TipTapEditor
@@ -155,15 +176,26 @@ export function NoteEditorPage() {
             </div>
 
             {user?.role === "creator" && note && (
-              <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+              <div
+                style={{
+                  marginTop: 24,
+                  paddingTop: 16,
+                  borderTop: "1px solid var(--border)",
+                }}
+              >
                 <h4>Share as Template</h4>
-                <p className="text-soft" style={{ fontSize: 14, marginBottom: 8 }}>
+                <p
+                  className="text-soft"
+                  style={{ fontSize: 14, marginBottom: 8 }}
+                >
                   Share this note with the community as a template.
                 </p>
                 <button
                   type="button"
                   className="ghost"
-                  onClick={() => navigate(`/templates/my?type=note&source_id=${note.id}`)}
+                  onClick={() =>
+                    navigate(`/templates/my?type=note&source_id=${note.id}`)
+                  }
                 >
                   Create Template from Note
                 </button>

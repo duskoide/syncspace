@@ -12,7 +12,7 @@ export function BackButton({ fallback }: BackButtonProps) {
       type="button"
       className="ghost"
       onClick={() => (fallback ? navigate(fallback) : navigate(-1))}
-      style={{ marginBottom: 8 }}
+      style={{ marginBottom: 24 }}
     >
       ← Back
     </button>
