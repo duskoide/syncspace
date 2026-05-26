@@ -96,12 +96,12 @@ export function NoteEditorPage() {
   if (!workspace) return <div className="page">Workspace not found</div>;
 
   return (
-    <div className="page" style={{ maxWidth: "100%" }}>
+    <div className="page">
       <BackButton fallback={`/workspaces/${workspaceId}`} />
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
         {/* Main Editor Area */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="surfaceBlock" style={{ marginBottom: 16 }}>
+        <div style={{ flex: 1, minWidth: 0, maxWidth: 800 }}>
+          <div className="surfaceBlock">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>
                 <p className="eyebrow">{workspace.name}</p>
