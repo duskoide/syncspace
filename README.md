@@ -22,6 +22,66 @@ docker-compose up --build -d
 
 The app is available at http://localhost:3000
 
+## Docker Usage
+
+### Basic Commands
+```bash
+# Start all services
+docker-compose up -d
+
+# Start with rebuild (after code changes)
+docker-compose up --build -d
+
+# View logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f backend
+docker-compose logs -f frontend
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (WARNING: deletes database)
+docker-compose down -v
+
+# Restart a specific service
+docker-compose restart backend
+```
+
+### Data Persistence
+- **Database:** Stored in `./data/syncspace.db` (SQLite)
+- **Uploads:** Files stored in `./data/uploads/`
+- **Logs:** Check with `docker-compose logs`
+
+### Environment Variables
+Create a `.env` file for configuration:
+```env
+# JWT Secret (generate a secure random string)
+JWT_SECRET=your-secret-key-here
+
+# Cloudflare Tunnel Token (optional)
+TUNNEL_TOKEN=your-cloudflare-tunnel-token
+```
+
+### Troubleshooting
+```bash
+# Check container status
+docker-compose ps
+
+# Execute commands in container
+docker-compose exec backend sh
+docker-compose exec frontend sh
+
+# Check database inside container
+docker-compose exec backend sh -c "sqlite3 /data/syncspace.db '.tables'"
+
+# Reset everything (delete data)
+docker-compose down -v
+rm -rf data/
+docker-compose up --build -d
+```
+
 ### With Cloudflare Tunnel (Public Access)
 1. Copy `.env.example` to `.env`: `cp .env.example .env`
 2. Create a Cloudflare Tunnel in [Zero Trust Dashboard](https://one.dash.cloudflare.com/) → Networks → Tunnels
@@ -40,7 +100,16 @@ cd frontend && npm install && npm run dev
 ```
 
 ## Default Credentials
-- **Superadmin:** `admin@syncspace.edu` / `admin123`
+
+The following accounts are automatically created on first startup:
+
+| Role | Email | Password |
+|------|-------|----------|
+| **Superadmin** | `admin@syncspace.edu` | `admin123` |
+| **Creator** | `creator@syncspace.edu` | `creator123` |
+| **User** | `user@syncspace.edu` | `user123` |
+
+Use these to test different roles without registration.
 
 ## User Roles
 
