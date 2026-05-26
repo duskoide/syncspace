@@ -3,8 +3,9 @@ package config
 import "os"
 
 type Config struct {
-	Addr   string
-	DBPath string
+	Addr      string
+	DBPath    string
+	UploadDir string
 }
 
 func Load() Config {
@@ -16,5 +17,9 @@ func Load() Config {
 	if dbPath == "" {
 		dbPath = "../data/syncspace.db"
 	}
-	return Config{Addr: addr, DBPath: dbPath}
+	uploadDir := os.Getenv("SYNCSPACE_UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = "uploads"
+	}
+	return Config{Addr: addr, DBPath: dbPath, UploadDir: uploadDir}
 }

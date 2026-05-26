@@ -20,7 +20,7 @@ func main() {
 	}
 	defer st.Close()
 
-	svc := service.New(st)
+	svc := service.New(st, cfg.UploadDir)
 	h := api.New(svc)
 	mux := http.NewServeMux()
 

@@ -23,7 +23,7 @@ type Service struct {
 	FileService      *FileService
 }
 
-func New(st *store.Store) *Service {
+func New(st *store.Store, uploadDir string) *Service {
 	s := &Service{
 		store:  st,
 		client: &http.Client{Timeout: 10 * time.Second},
@@ -32,7 +32,7 @@ func New(st *store.Store) *Service {
 	s.WorkspaceService = &WorkspaceService{store: st}
 	s.NoteService = &NoteService{store: st}
 	s.TemplateService = &TemplateService{store: st}
-	s.FileService = NewFileService(st, "uploads")
+	s.FileService = NewFileService(st, uploadDir)
 	return s
 }
 

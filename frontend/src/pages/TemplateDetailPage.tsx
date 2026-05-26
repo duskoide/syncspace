@@ -147,8 +147,8 @@ export function TemplateDetailPage() {
 
         {isOwner && (
           <div style={{ display: "flex", gap: 12 }}>
-            <Link to={`/templates/${template.id}/edit`} className="button">
-              Edit Template
+            <Link to="/templates/my" className="button">
+              Manage My Templates
             </Link>
             <button
               className="ghost danger"
