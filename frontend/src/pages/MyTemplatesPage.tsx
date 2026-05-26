@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../services/api";
+import { BackButton } from "../components/BackButton";
 import { useAuth } from "../context/AuthContext";
 
 interface Template {
@@ -123,6 +124,7 @@ export function MyTemplatesPage() {
 
   return (
     <div className="page">
+      <BackButton fallback="/templates" />
       <div className="hero">
         <div>
           <h1 className="heading">My Templates</h1>

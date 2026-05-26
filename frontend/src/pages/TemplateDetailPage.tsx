@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
+import { BackButton } from "../components/BackButton";
 import { useAuth } from "../context/AuthContext";
 
 interface Template {
@@ -86,6 +87,7 @@ export function TemplateDetailPage() {
 
   return (
     <div className="page">
+      <BackButton fallback="/templates" />
       <div className="surfaceBlock">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
           <div>

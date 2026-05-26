@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import { TipTapEditor } from "../components/TipTapEditor";
 import { WikipediaSidebar } from "../components/WikipediaSidebar";
+import { BackButton } from "../components/BackButton";
 import { useAuth } from "../context/AuthContext";
 
 interface Note {
@@ -96,6 +97,7 @@ export function NoteEditorPage() {
 
   return (
     <div className="page" style={{ maxWidth: "100%" }}>
+      <BackButton fallback={`/workspaces/${workspaceId}`} />
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
         {/* Main Editor Area */}
         <div style={{ flex: 1, minWidth: 0 }}>

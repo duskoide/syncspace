@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { BackButton } from "../components/BackButton";
 
 interface Workspace {
   id: number;
@@ -79,6 +80,7 @@ export function WorkspaceDetailPage() {
 
   return (
     <div className="page">
+      <BackButton fallback="/workspaces" />
       <div className="hero">
         <div style={{ flex: 1 }}>
           <p className="eyebrow">Workspace</p>

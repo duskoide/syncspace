@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { BackButton } from "../components/BackButton";
 import { api } from "../services/api";
 
 interface User {
@@ -111,6 +112,7 @@ export function AdminPage() {
 
   return (
     <div className="page">
+      <BackButton fallback="/dashboard" />
       <div className="hero">
         <div>
           <p className="eyebrow">Administration</p>
