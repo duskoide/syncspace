@@ -50,57 +50,77 @@ export const api = {
     request("/api/auth/register", { method: "POST", body: JSON.stringify(data) }),
   me: () => request("/api/auth/me"),
 
-  // Admin
+  // Admin - Users
   listUsers: (params?: { role?: string; status?: string }) => {
     const qs = new URLSearchParams();
     if (params?.role) qs.append("role", params.role);
     if (params?.status) qs.append("status", params.status);
     return request(`/api/admin/users?${qs}`);
   },
-  approveUser: (id: number) =>
-    request(`/api/admin/users/${id}/approve`, { method: "PUT" }),
+  activateUser: (id: number) =>
+    request(`/api/admin/users/${id}/activate`, { method: "PUT" }),
   suspendUser: (id: number) =>
     request(`/api/admin/users/${id}/suspend`, { method: "PUT" }),
 
-  // Boards (formerly Classrooms)
-  listBoards: () => request("/api/boards"),
-  createBoard: (data: { name: string; description: string; visibility: string }) =>
-    request("/api/boards", { method: "POST", body: JSON.stringify(data) }),
-  getBoard: (id: number) => request(`/api/boards/${id}`),
-  updateBoard: (id: number, data: { name: string; description: string; visibility: string }) =>
-    request(`/api/boards/${id}`, { method: "PUT", body: JSON.stringify(data) }),
-  deleteBoard: (id: number) =>
-    request(`/api/boards/${id}`, { method: "DELETE" }),
-  joinBoard: (id: number) =>
-    request(`/api/boards/${id}/join`, { method: "POST" }),
-  approveMembership: (id: number) =>
-    request(`/api/memberships/${id}/approve`, { method: "PUT" }),
-  getBoardMembers: (id: number) =>
-    request(`/api/boards/${id}/members`),
+  // Admin - Templates
+  listAllTemplates: () => request("/api/admin/templates"),
+  setTemplateHidden: (id: number, isHidden: boolean) =>
+    request(`/api/admin/templates/${id}`, { 
+      method: "PATCH", 
+      body: JSON.stringify({ is_hidden: isHidden }) 
+    }),
 
-  // Board Images
-  listBoardImages: (boardId: number) =>
-    request(`/api/boards/${boardId}/images`),
-  uploadBoardImage: (boardId: number, file: File) => {
+  // Workspaces
+  listWorkspaces: () => request("/api/workspaces"),
+  createWorkspace: (data: { name: string; description: string }) =>
+    request("/api/workspaces", { method: "POST", body: JSON.stringify(data) }),
+  getWorkspace: (id: number) => request(`/api/workspaces/${id}`),
+  updateWorkspace: (id: number, data: { name: string; description: string }) =>
+    request(`/api/workspaces/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteWorkspace: (id: number) =>
+    request(`/api/workspaces/${id}`, { method: "DELETE" }),
+
+  // Notes
+  listNotes: (workspaceId: number) => request(`/api/workspaces/${workspaceId}/notes`),
+  createNote: (workspaceId: number, data: { title: string }) =>
+    request(`/api/workspaces/${workspaceId}/notes`, { method: "POST", body: JSON.stringify(data) }),
+  getNote: (id: number) => request(`/api/notes/${id}`),
+  updateNote: (id: number, data: { title: string; content: string }) =>
+    request(`/api/notes/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  deleteNote: (id: number) =>
+    request(`/api/notes/${id}`, { method: "DELETE" }),
+
+  // Templates
+  listTemplates: (search?: string) => {
+    const qs = new URLSearchParams();
+    if (search) qs.append("search", search);
+    return request(`/api/templates?${qs}`);
+  },
+  listMyTemplates: () => request("/api/templates/my"),
+  getTemplate: (id: number) => request(`/api/templates/${id}`),
+  createTemplate: (data: { type: string; source_id: number; name: string; description: string; visibility: string }) =>
+    request("/api/templates", { method: "POST", body: JSON.stringify(data) }),
+  updateTemplate: (id: number, data: { name: string; description: string; visibility: string }) =>
+    request(`/api/templates/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  updateTemplateContent: (id: number) =>
+    request(`/api/templates/${id}/update-content`, { method: "POST" }),
+  deleteTemplate: (id: number) =>
+    request(`/api/templates/${id}`, { method: "DELETE" }),
+  cloneTemplate: (id: number, targetWorkspaceId?: number) =>
+    request(`/api/templates/${id}/clone`, { 
+      method: "POST", 
+      body: JSON.stringify({ target_workspace_id: targetWorkspaceId }) 
+    }),
+
+  // Note Images
+  uploadNoteImage: (noteId: number, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    form.append("board_id", String(boardId));
+    form.append("note_id", String(noteId));
     return request("/api/upload", { method: "POST", body: form, headers: {} });
   },
-
-  // Discussions (board_id instead of classroom_id)
-  listDiscussions: (boardId: number) =>
-    request(`/api/discussions?board_id=${boardId}`),
-  createDiscussion: (data: { board_id: number; message: string; parent_id?: number }) =>
-    request("/api/discussions", { method: "POST", body: JSON.stringify(data) }),
-
-  // Files
-  uploadFile: (file: File, boardId?: number) => {
-    const form = new FormData();
-    form.append("file", file);
-    if (boardId) form.append("board_id", String(boardId));
-    return request("/api/upload", { method: "POST", body: form, headers: {} });
-  },
+  deleteNoteImage: (id: number) =>
+    request(`/api/files/${id}`, { method: "DELETE" }),
 
   // Wikipedia API
   wikiSummary: (topic: string) =>

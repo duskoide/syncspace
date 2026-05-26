@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { api } from "../services/api";
 
 export function RegisterPage() {
-  const [form, setForm] = useState({ email: "", password: "", name: "", role: "collaborator" });
+  const [form, setForm] = useState({ email: "", password: "", name: "", role: "user" });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
@@ -24,7 +24,7 @@ export function RegisterPage() {
         <div className="card authCard focusCard">
           <p className="eyebrow authTitle">Account Created</p>
           <h2 className="authHeading" style={{ color: "#ccefdc" }}>Registration Successful</h2>
-          <p className="authCopy">Your account is pending approval from the administrator.</p>
+          <p className="authCopy">Your account is ready! You can now log in.</p>
           <p className="authFooter">
             <Link to="/login" className="textLink">Go to Login</Link>
           </p>
@@ -38,7 +38,7 @@ export function RegisterPage() {
       <div className="card authCard focusCard">
         <p className="eyebrow authTitle">SyncSpace</p>
         <h1 className="authHeading">Register</h1>
-        <p className="authCopy">Create a collaborator or moderator account. New accounts require approval before access.</p>
+        <p className="authCopy">Create a user or creator account. Creators can share templates with the community.</p>
         {error && (
           <div className="banner error" style={{ marginTop: 20, marginBottom: 0 }}>
             {error}
@@ -78,8 +78,8 @@ export function RegisterPage() {
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
             >
-              <option value="collaborator">Collaborator</option>
-              <option value="moderator">Moderator</option>
+              <option value="user">User - Take notes and use templates</option>
+              <option value="creator">Creator - Share templates with community</option>
             </select>
           </div>
           <button type="submit">Register</button>
