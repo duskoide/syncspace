@@ -30,7 +30,7 @@ export function NoteEditorPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [showSidebar, setShowSidebar] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -111,7 +111,7 @@ export function NoteEditorPage() {
                   className="ghost"
                   onClick={() => setShowSidebar(!showSidebar)}
                 >
-                  {showSidebar ? "Hide Sidebar" : "Show Sidebar"}
+                  Wikipedia Summary
                 </button>
                 <button
                   type="button"
