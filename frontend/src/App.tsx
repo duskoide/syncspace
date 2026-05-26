@@ -10,6 +10,7 @@ import { WorkspaceListPage } from "./pages/WorkspaceListPage";
 import { NoteEditorPage } from "./pages/NoteEditorPage";
 import { TemplateDiscoveryPage } from "./pages/TemplateDiscoveryPage";
 import { TemplateDetailPage } from "./pages/TemplateDetailPage";
+import { MyTemplatesPage } from "./pages/MyTemplatesPage";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -93,6 +94,16 @@ export function App() {
               <ProtectedRoute>
                 <Layout>
                   <TemplateDetailPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/templates/my"
+            element={
+              <ProtectedRoute roles={["creator"]}>
+                <Layout>
+                  <MyTemplatesPage />
                 </Layout>
               </ProtectedRoute>
             }
