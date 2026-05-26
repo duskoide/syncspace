@@ -1,15 +1,21 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
-import { useCallback } from "react";
+import { useCallback, useRef, useState } from "react";
+import { api, ApiError } from "../services/api";
 
 interface TipTapEditorProps {
   content: string;
   onChange: (content: string) => void;
   placeholder?: string;
+  noteId?: number;
 }
 
-export function TipTapEditor({ content, onChange, placeholder }: TipTapEditorProps) {
+export function TipTapEditor({ content, onChange, placeholder, noteId }: TipTapEditorProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -30,12 +36,58 @@ export function TipTapEditor({ content, onChange, placeholder }: TipTapEditorPro
     },
   });
 
-  const addImage = useCallback(() => {
+  const addImageByUrl = useCallback(() => {
     const url = window.prompt("Enter image URL:");
     if (url && editor) {
       editor.chain().focus().setImage({ src: url }).run();
     }
   }, [editor]);
+
+  const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !editor) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please select an image file");
+      return;
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("File too large (max 10MB)");
+      return;
+    }
+
+    setUploading(true);
+    setUploadError("");
+
+    try {
+      // Upload to a temporary note (noteId = 0) if no noteId provided
+      // Backend will handle it and we can reference the image by its file ID
+      const result = await api.uploadNoteImage(noteId || 0, file);
+      
+      // Insert the image using the file ID
+      const imageUrl = `/api/files/${result.id}`;
+      editor.chain().focus().setImage({ src: imageUrl }).run();
+    } catch (err: any) {
+      if (err instanceof ApiError) {
+        setUploadError(err.message);
+      } else {
+        setUploadError("Failed to upload image");
+      }
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  }, [editor, noteId]);
+
+  const triggerFilePicker = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
   if (!editor) {
     return <div className="editor-loading">Loading editor...</div>;
@@ -43,6 +95,11 @@ export function TipTapEditor({ content, onChange, placeholder }: TipTapEditorPro
 
   return (
     <div className="tiptap-wrapper">
+      {uploadError && (
+        <div className="banner error" style={{ margin: "8px 8px 0" }}>
+          {uploadError}
+        </div>
+      )}
       <div className="tiptap-toolbar">
         <button
           type="button"
@@ -92,10 +149,29 @@ export function TipTapEditor({ content, onChange, placeholder }: TipTapEditorPro
         >
           1. List
         </button>
-        <button type="button" onClick={addImage} title="Insert Image">
-          🖼️ Image
+        <button 
+          type="button" 
+          onClick={triggerFilePicker} 
+          title="Upload Image"
+          disabled={uploading}
+        >
+          {uploading ? "⏳" : "📎"} Upload
+        </button>
+        <button 
+          type="button" 
+          onClick={addImageByUrl} 
+          title="Insert Image from URL"
+        >
+          🌐 URL
         </button>
       </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelect}
+        style={{ display: "none" }}
+      />
       <EditorContent editor={editor} className="tiptap-content" />
     </div>
   );
