@@ -85,13 +85,15 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	authMux.HandleFunc("GET /api/admin/templates", h.ListAllTemplatesAdmin)
 	authMux.HandleFunc("PATCH /api/admin/templates/", h.SetTemplateHidden)
 
-	// File upload/download for note images
+	// File upload/delete for note images (authenticated)
 	authMux.HandleFunc("POST /api/upload", h.uploadNoteImage)
-	authMux.HandleFunc("GET /api/files/{id}", h.downloadFile)
-	authMux.HandleFunc("DELETE /api/files/{id}", h.deleteNoteImage)
+	authMux.HandleFunc("DELETE /api/files/", h.deleteNoteImage)
 
 	// Wikipedia integration
 	authMux.HandleFunc("GET /api/wiki/summary", h.wikiSummary)
+
+	// Public: file serving (images embedded in notes need to load without auth)
+	mux.HandleFunc("GET /api/files/{id}", h.downloadFile)
 
 	// Wrap auth routes with auth middleware
 	mux.Handle("/api/auth/me", AuthMiddleware(authMux))
