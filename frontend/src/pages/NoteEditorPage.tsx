@@ -100,7 +100,7 @@ export function NoteEditorPage() {
       <BackButton fallback={`/workspaces/${workspaceId}`} />
       <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
         {/* Main Editor Area */}
-        <div style={{ flex: 1, minWidth: 0, maxWidth: 800 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div className="surfaceBlock">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
               <div>

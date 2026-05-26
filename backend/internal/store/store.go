@@ -46,6 +46,11 @@ func Open(path string) (*Store, error) {
 		return nil, fmt.Errorf("create default superadmin: %w", err)
 	}
 
+	if err := s.seedDefaultUsers(context.Background()); err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("seed default users: %w", err)
+	}
+
 	return s, nil
 }
 
@@ -164,6 +169,50 @@ func (s *Store) createDefaultSuperadmin(ctx context.Context) error {
 		`INSERT INTO users(email, password_hash, name, role, status, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?)`,
 		"admin@syncspace.edu", hash, "System Admin", "superadmin", "active", now, now)
 	return err
+}
+
+func (s *Store) seedDefaultUsers(ctx context.Context) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	// Check and create default user account
+	var userCount int
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE email = 'user@syncspace.edu'`).Scan(&userCount)
+	if err != nil {
+		return err
+	}
+	if userCount == 0 {
+		userHash, err := auth.HashPassword("user123")
+		if err != nil {
+			return fmt.Errorf("hash default user password: %w", err)
+		}
+		_, err = s.db.ExecContext(ctx,
+			`INSERT INTO users(email, password_hash, name, role, status, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+			"user@syncspace.edu", userHash, "Default User", "user", "active", now, now)
+		if err != nil {
+			return fmt.Errorf("create default user: %w", err)
+		}
+	}
+
+	// Check and create default creator account
+	var creatorCount int
+	err = s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE email = 'creator@syncspace.edu'`).Scan(&creatorCount)
+	if err != nil {
+		return err
+	}
+	if creatorCount == 0 {
+		creatorHash, err := auth.HashPassword("creator123")
+		if err != nil {
+			return fmt.Errorf("hash default creator password: %w", err)
+		}
+		_, err = s.db.ExecContext(ctx,
+			`INSERT INTO users(email, password_hash, name, role, status, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?)`,
+			"creator@syncspace.edu", creatorHash, "Default Creator", "creator", "active", now, now)
+		if err != nil {
+			return fmt.Errorf("create default creator: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // ==================== User Methods ====================
