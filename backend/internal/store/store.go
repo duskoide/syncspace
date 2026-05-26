@@ -530,7 +530,7 @@ func (s *Store) GetNoteImage(ctx context.Context, id int64) (models.NoteImage, e
 		return ni, err
 	}
 	if nid.Valid {
-		ni.NoteID = nid.Int64
+		ni.NoteID = &nid.Int64
 	}
 	ni.CreatedAt, _ = time.Parse(time.RFC3339, c)
 	return ni, nil
@@ -556,7 +556,7 @@ func (s *Store) ListNoteImagesByNote(ctx context.Context, noteID int64) ([]model
 			return nil, err
 		}
 		if nid.Valid {
-			ni.NoteID = nid.Int64
+			ni.NoteID = &nid.Int64
 		}
 		ni.CreatedAt, _ = time.Parse(time.RFC3339, c)
 		out = append(out, ni)

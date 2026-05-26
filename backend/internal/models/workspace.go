@@ -43,7 +43,7 @@ type Template struct {
 // NoteImage represents an inline image uploaded to a note
 type NoteImage struct {
 	ID           int64     `json:"id"`
-	NoteID       int64     `json:"note_id"`
+	NoteID       *int64    `json:"note_id"`
 	Filename     string    `json:"filename"`
 	OriginalName string    `json:"original_name"`
 	MimeType     string    `json:"mime_type"`

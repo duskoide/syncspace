@@ -37,7 +37,7 @@ func NewFileService(store *store.Store, uploadDir string) *FileService {
 }
 
 // UploadNoteImage uploads an image for a note
-func (s *FileService) UploadNoteImage(ctx context.Context, uploadedBy int64, noteID int64, file multipart.File, header *multipart.FileHeader) (models.NoteImage, error) {
+func (s *FileService) UploadNoteImage(ctx context.Context, uploadedBy int64, noteID *int64, file multipart.File, header *multipart.FileHeader) (models.NoteImage, error) {
 	// Validate file size (max 10MB)
 	const maxSize = 10 * 1024 * 1024
 	if header.Size > maxSize {
@@ -73,15 +73,15 @@ func (s *FileService) UploadNoteImage(ctx context.Context, uploadedBy int64, not
 		return models.NoteImage{}, fmt.Errorf("failed to save file: %w", err)
 	}
 
-	// Save to database
+	// Save to database — note_id may be nil if uploaded before note is saved
 	ni := models.NoteImage{
-		NoteID:       noteID,
 		Filename:     filename,
 		OriginalName: header.Filename,
 		MimeType:     mimeType,
 		FileSize:     header.Size,
 		FilePath:     filePath,
 		UploadedBy:   uploadedBy,
+		NoteID:       noteID,
 	}
 
 	return s.store.CreateNoteImage(ctx, ni)

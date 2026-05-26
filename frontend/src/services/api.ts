@@ -113,11 +113,11 @@ export const api = {
     }),
 
   // Note Images
-  uploadNoteImage: (noteId: number, file: File) => {
+  uploadNoteImage: (noteId: number | undefined, file: File) => {
     const form = new FormData();
     form.append("file", file);
-    form.append("note_id", String(noteId));
-    return request("/api/upload", { method: "POST", body: form, headers: {} });
+    if (noteId) form.append("note_id", String(noteId));
+    return request("/api/upload", { method: "POST", body: form });
   },
   deleteNoteImage: (id: number) =>
     request(`/api/files/${id}`, { method: "DELETE" }),

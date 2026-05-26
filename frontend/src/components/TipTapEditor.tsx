@@ -63,9 +63,8 @@ export function TipTapEditor({ content, onChange, placeholder, noteId }: TipTapE
     setUploadError("");
 
     try {
-      // Upload to a temporary note (noteId = 0) if no noteId provided
-      // Backend will handle it and we can reference the image by its file ID
-      const result = await api.uploadNoteImage(noteId || 0, file);
+      // Upload image — note_id is optional (may not exist yet for new notes)
+      const result = await api.uploadNoteImage(noteId || undefined, file);
       
       // Insert the image using the file ID
       const imageUrl = `/api/files/${result.id}`;

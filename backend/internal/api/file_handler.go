@@ -21,16 +21,15 @@ func (h *Handler) uploadNoteImage(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	// Get note_id
-	noteIDStr := r.FormValue("note_id")
-	if noteIDStr == "" {
-		writeError(w, 400, "bad_request", "note_id is required")
-		return
-	}
-	noteID, err := strconv.ParseInt(noteIDStr, 10, 64)
-	if err != nil {
-		writeError(w, 400, "bad_request", "invalid note_id")
-		return
+	// note_id is optional — images can be uploaded before a note is saved
+	var noteID *int64
+	if noteIDStr := r.FormValue("note_id"); noteIDStr != "" {
+		id, err := strconv.ParseInt(noteIDStr, 10, 64)
+		if err != nil {
+			writeError(w, 400, "bad_request", "invalid note_id")
+			return
+		}
+		noteID = &id
 	}
 
 	claims := GetUserFromContext(r.Context())
