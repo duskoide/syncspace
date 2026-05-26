@@ -6,6 +6,7 @@ type Config struct {
 	Addr      string
 	DBPath    string
 	UploadDir string
+	JWTSecret string
 }
 
 func Load() Config {
@@ -21,5 +22,9 @@ func Load() Config {
 	if uploadDir == "" {
 		uploadDir = "uploads"
 	}
-	return Config{Addr: addr, DBPath: dbPath, UploadDir: uploadDir}
+	jwtSecret := os.Getenv("SYNCSPACE_JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "syncspace-edu-secret-key-change-in-production"
+	}
+	return Config{Addr: addr, DBPath: dbPath, UploadDir: uploadDir, JWTSecret: jwtSecret}
 }

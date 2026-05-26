@@ -12,6 +12,7 @@ import { NoteEditorPage } from "./pages/NoteEditorPage";
 import { TemplateDiscoveryPage } from "./pages/TemplateDiscoveryPage";
 import { TemplateDetailPage } from "./pages/TemplateDetailPage";
 import { MyTemplatesPage } from "./pages/MyTemplatesPage";
+import { NotFoundPage } from "./pages/NotFoundPage";
 
 function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -120,6 +121,7 @@ export function App() {
             }
           />
           <Route path="/" element={<LoginPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

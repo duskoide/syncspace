@@ -10,6 +10,8 @@ services:
     environment:
       - SYNCSPACE_ADDR=:8080
       - SYNCSPACE_DB_PATH=/data/syncspace.db
+      - SYNCSPACE_UPLOAD_DIR=/uploads
+      - SYNCSPACE_JWT_SECRET=${JWT_SECRET:-syncspace-edu-secret-key-change-in-production}
     networks:
       - syncspace
 

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"regexp"
 	"strings"
 
 	"syncspace/backend/internal/models"
@@ -81,7 +82,7 @@ func (s *NoteService) UpdateNote(ctx context.Context, userID int64, noteID int64
 
 	update := models.Note{
 		Title:   strings.TrimSpace(req.Title),
-		Content: req.Content, // HTML content from TipTap
+		Content: sanitizeHTML(req.Content), // Sanitize HTML from TipTap
 	}
 
 	return s.store.UpdateNote(ctx, noteID, update)
@@ -107,4 +108,36 @@ func (s *NoteService) isWorkspaceOwner(ctx context.Context, userID, workspaceID 
 		return false
 	}
 	return w.UserID == userID
+}
+
+// sanitizeHTML removes dangerous HTML to prevent XSS.
+// It strips script tags, event handlers, and javascript: URLs.
+func sanitizeHTML(input string) string {
+	// Remove script tags and their contents
+	scriptRe := regexp.MustCompile(`(?i)<script[^>]*>[\s\S]*?</script>`)
+	output := scriptRe.ReplaceAllString(input, "")
+
+	// Remove dangerous tags (iframe, object, embed, form, input)
+	for _, tag := range []string{"iframe", "object", "embed", "form", "input"} {
+		openRe := regexp.MustCompile(`(?i)<` + tag + `[^>]*>[\s\S]*?</` + tag + `>`)
+		output = openRe.ReplaceAllString(output, "")
+		selfCloseRe := regexp.MustCompile(`(?i)<` + tag + `[^>]*/?>`)
+		output = selfCloseRe.ReplaceAllString(output, "")
+	}
+
+	// Remove on* event handlers from attributes (double quotes, single quotes, or unquoted)
+	onEventRe := regexp.MustCompile(`(?i)\s+on\w+\s*=\s*"[^"]*"`)
+	output = onEventRe.ReplaceAllString(output, "")
+
+	onEventSingleRe := regexp.MustCompile(`(?i)\s+on\w+\s*=\s*'[^']*'`)
+	output = onEventSingleRe.ReplaceAllString(output, "")
+
+	onEventUnquotedRe := regexp.MustCompile(`(?i)\s+on\w+\s*=\s*[^\s>]+`)
+	output = onEventUnquotedRe.ReplaceAllString(output, "")
+
+	// Remove javascript: URLs
+	jsURLRe := regexp.MustCompile(`(?i)javascript:\s*[^"']*`)
+	output = jsURLRe.ReplaceAllString(output, "")
+
+	return output
 }
