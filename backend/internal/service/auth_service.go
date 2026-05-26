@@ -23,8 +23,8 @@ func (s *Service) Register(ctx context.Context, req models.RegisterRequest) (mod
 	if strings.TrimSpace(req.Name) == "" {
 		return models.User{}, fmt.Errorf("name is required")
 	}
-	if req.Role != "moderator" && req.Role != "collaborator" {
-		return models.User{}, fmt.Errorf("role must be moderator or collaborator")
+	if req.Role != "creator" && req.Role != "user" {
+		return models.User{}, fmt.Errorf("role must be creator or user")
 	}
 
 	hash, err := auth.HashPassword(req.Password)
@@ -37,7 +37,7 @@ func (s *Service) Register(ctx context.Context, req models.RegisterRequest) (mod
 		PasswordHash: hash,
 		Name:         strings.TrimSpace(req.Name),
 		Role:         req.Role,
-		Status:       "pending",
+		Status:       "active", // Auto-approved on registration
 	}
 
 	return s.store.CreateUser(ctx, u)
@@ -56,9 +56,6 @@ func (s *Service) Login(ctx context.Context, req models.LoginRequest) (models.To
 		return models.TokenPair{}, models.User{}, fmt.Errorf("database error: %w", err)
 	}
 
-	if u.Status == "pending" {
-		return models.TokenPair{}, models.User{}, fmt.Errorf("account pending approval")
-	}
 	if u.Status == "suspended" {
 		return models.TokenPair{}, models.User{}, fmt.Errorf("account suspended")
 	}
@@ -86,7 +83,7 @@ func (s *Service) ListUsers(ctx context.Context, role, status string) ([]models.
 	return s.store.ListUsers(ctx, role, status)
 }
 
-func (s *Service) ApproveUser(ctx context.Context, adminID, userID int64) error {
+func (s *Service) ActivateUser(ctx context.Context, adminID, userID int64) error {
 	admin, err := s.store.GetUserByID(ctx, adminID)
 	if err != nil {
 		return fmt.Errorf("admin not found")
@@ -95,12 +92,9 @@ func (s *Service) ApproveUser(ctx context.Context, adminID, userID int64) error 
 		return fmt.Errorf("insufficient permissions")
 	}
 
-	u, err := s.store.GetUserByID(ctx, userID)
+	_, err = s.store.GetUserByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("user not found")
-	}
-	if u.Status != "pending" {
-		return fmt.Errorf("user is not pending approval")
 	}
 
 	return s.store.UpdateUserStatus(ctx, userID, "active")

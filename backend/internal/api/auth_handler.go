@@ -85,7 +85,7 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, users)
 }
 
-func (h *Handler) ApproveUser(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ActivateUser(w http.ResponseWriter, r *http.Request) {
 	id, ok := parseID(r.URL.Path, "/api/admin/users/")
 	if !ok {
 		writeError(w, 400, "bad_request", "invalid user id")
@@ -93,11 +93,11 @@ func (h *Handler) ApproveUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	admin := GetUserFromContext(r.Context())
-	if err := h.svc.ApproveUser(r.Context(), admin.UserID, id); err != nil {
+	if err := h.svc.ActivateUser(r.Context(), admin.UserID, id); err != nil {
 		writeError(w, 400, "validation_error", err.Error())
 		return
 	}
-	writeJSON(w, 200, map[string]string{"status": "approved"})
+	writeJSON(w, 200, map[string]string{"status": "activated"})
 }
 
 func (h *Handler) SuspendUser(w http.ResponseWriter, r *http.Request) {
