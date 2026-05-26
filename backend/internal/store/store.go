@@ -223,6 +223,9 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (models.User, 
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id, email, password_hash, name, role, status, created_at, updated_at FROM users WHERE email = ?`, email).
 		Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Status, &c, &up)
+	if err == sql.ErrNoRows {
+		return u, fmt.Errorf("user not found")
+	}
 	if err != nil {
 		return u, err
 	}
@@ -237,6 +240,9 @@ func (s *Store) GetUserByID(ctx context.Context, id int64) (models.User, error) 
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id, email, password_hash, name, role, status, created_at, updated_at FROM users WHERE id = ?`, id).
 		Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Status, &c, &up)
+	if err == sql.ErrNoRows {
+		return u, fmt.Errorf("user not found")
+	}
 	if err != nil {
 		return u, err
 	}
@@ -323,6 +329,9 @@ func (s *Store) GetWorkspace(ctx context.Context, id int64) (models.Workspace, e
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id, name, description, user_id, created_at, updated_at FROM workspaces WHERE id = ?`, id).
 		Scan(&w.ID, &w.Name, &w.Description, &w.UserID, &c, &up)
+	if err == sql.ErrNoRows {
+		return w, fmt.Errorf("workspace not found")
+	}
 	if err != nil {
 		return w, err
 	}
@@ -391,6 +400,9 @@ func (s *Store) GetNote(ctx context.Context, id int64) (models.Note, error) {
 		`SELECT n.id, n.workspace_id, n.title, n.content, n.created_by, u.name, n.created_at, n.updated_at 
 		 FROM notes n JOIN users u ON n.created_by = u.id WHERE n.id = ?`, id).
 		Scan(&n.ID, &n.WorkspaceID, &n.Title, &n.Content, &n.CreatedBy, &n.CreatorName, &c, &up)
+	if err == sql.ErrNoRows {
+		return n, fmt.Errorf("note not found")
+	}
 	if err != nil {
 		return n, err
 	}
@@ -462,6 +474,9 @@ func (s *Store) GetTemplate(ctx context.Context, id int64) (models.Template, err
 		`SELECT t.id, t.type, t.source_id, t.creator_id, u.name, t.name, t.description, t.visibility, t.content_snapshot, t.is_hidden, t.created_at, t.updated_at 
 		 FROM templates t JOIN users u ON t.creator_id = u.id WHERE t.id = ?`, id).
 		Scan(&t.ID, &t.Type, &t.SourceID, &t.CreatorID, &t.CreatorName, &t.Name, &t.Description, &t.Visibility, &t.ContentSnapshot, &t.IsHidden, &c, &up)
+	if err == sql.ErrNoRows {
+		return t, fmt.Errorf("template not found")
+	}
 	if err != nil {
 		return t, err
 	}
@@ -575,6 +590,9 @@ func (s *Store) GetNoteImage(ctx context.Context, id int64) (models.NoteImage, e
 		`SELECT ni.id, ni.note_id, ni.filename, ni.original_name, ni.mime_type, ni.file_size, ni.file_path, ni.uploaded_by, u.name, ni.created_at 
 		 FROM note_images ni JOIN users u ON ni.uploaded_by = u.id WHERE ni.id = ?`, id).
 		Scan(&ni.ID, &nid, &ni.Filename, &ni.OriginalName, &ni.MimeType, &ni.FileSize, &ni.FilePath, &ni.UploadedBy, &ni.UserName, &c)
+	if err == sql.ErrNoRows {
+		return ni, fmt.Errorf("image not found")
+	}
 	if err != nil {
 		return ni, err
 	}
