@@ -23,8 +23,8 @@ export function LoginPage() {
   return (
     <div className="authShell page">
       <div className="card authCard focusCard">
-        <p className="eyebrow authTitle">SyncSpace</p>
-        <h1 className="authHeading">Sign In</h1>
+        <h1 className="authHeading">SyncSpace</h1>
+        <p className="eyebrow authTitle">Sign In</p>
         <p className="authCopy">Enter your account details to continue to your collaborative workspace.</p>
         {error && (
           <div className="banner error" style={{ marginTop: 24, marginBottom: 0 }}>

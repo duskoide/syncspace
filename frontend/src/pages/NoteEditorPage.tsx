@@ -151,7 +151,7 @@ export function NoteEditorPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Note title"
-                style={{ fontSize: "1.25rem", fontWeight: 600 }}
+                style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 600 }}
               />
             </div>
 

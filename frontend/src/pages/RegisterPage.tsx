@@ -22,8 +22,8 @@ export function RegisterPage() {
     return (
       <div className="authShell page">
         <div className="card authCard focusCard">
-          <p className="eyebrow authTitle">Account Created</p>
-          <h2 className="authHeading" style={{ color: "#ccefdc" }}>Registration Successful</h2>
+          <h2 className="authHeading" style={{ color: "#ccefdc" }}>Account Created</h2>
+          <p className="eyebrow authTitle">Registration Successful</p>
           <p className="authCopy">Your account is pending approval from a superadmin. You will be able to log in once your account is activated.</p>
           <p className="authFooter">
             <Link to="/login" className="textLink">Go to Login</Link>
@@ -36,8 +36,8 @@ export function RegisterPage() {
   return (
     <div className="authShell page">
       <div className="card authCard focusCard">
-        <p className="eyebrow authTitle">SyncSpace</p>
-        <h1 className="authHeading">Register</h1>
+        <h1 className="authHeading">SyncSpace</h1>
+        <p className="eyebrow authTitle">Register</p>
         <p className="authCopy">Create a user or creator account. Creators can share templates with the community.</p>
         {error && (
           <div className="banner error" style={{ marginTop: 24, marginBottom: 0 }}>

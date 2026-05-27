@@ -97,7 +97,7 @@ export function WorkspaceDetailPage() {
                   value={editForm.name}
                   onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                   placeholder="Workspace name"
-                  style={{ fontSize: "1.5rem", fontWeight: 600 }}
+                  style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 600 }}
                 />
               </div>
               <div className="field">
