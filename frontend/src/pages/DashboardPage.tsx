@@ -17,12 +17,12 @@ export function DashboardPage() {
       link: "/templates", 
       color: "#059669" 
     },
-    { 
+    ...(user?.role !== "superadmin" ? [{
       title: "Research", 
       desc: "Search Wikipedia and enrich your notes", 
       link: "/workspaces", 
       color: "#7c3aed" 
-    },
+    }] : []),
     ...(user?.role === "superadmin" ? [{
       title: "Admin Actions",
       desc: "Manage users and moderate community templates",
