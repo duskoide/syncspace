@@ -27,27 +27,13 @@ export function DashboardPage() {
 
   return (
     <div className="page">
-      <div className="hero">
+      <div className="hero" style={{ gridTemplateColumns: "1fr" }}>
         <div>
           <p className="eyebrow">Dashboard</p>
           <h1>Welcome, {user?.name}!</h1>
           <p className="sub">
             Your personal note-taking space. Create workspaces, take notes, and discover templates.
           </p>
-        </div>
-        <div className="stats">
-          <div className="stat">
-            <span className="statValue">{user?.role === "superadmin" ? "Admin" : user?.role === "creator" ? "Creator" : "User"}</span>
-            <span className="statLabel">Role</span>
-          </div>
-          <div className="stat">
-            <span className="statValue">Active</span>
-            <span className="statLabel">Status</span>
-          </div>
-          <div className="stat">
-            <span className="statValue">Sync</span>
-            <span className="statLabel">Ready</span>
-          </div>
         </div>
       </div>
 
