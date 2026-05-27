@@ -188,16 +188,16 @@ export function NoteEditorPage() {
                   className="text-soft"
                   style={{ fontSize: 14, marginBottom: 8 }}
                 >
-                  Share this note with the community as a template.
+                  Share this workspace with the community as a template.
                 </p>
                 <button
                   type="button"
                   className="ghost"
                   onClick={() =>
-                    navigate(`/templates/my?type=note&source_id=${note.id}`)
+                    navigate(`/templates/my?source_id=${workspaceId}`)
                   }
                 >
-                  Create Template from Note
+                  Create Template from Workspace
                 </button>
               </div>
             )}

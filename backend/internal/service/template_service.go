@@ -15,10 +15,10 @@ type TemplateService struct {
 	store *store.Store
 }
 
-// CreateTemplate creates a template from a workspace or note
+// CreateTemplate creates a template from a workspace
 func (s *TemplateService) CreateTemplate(ctx context.Context, creatorID int64, req models.CreateTemplateRequest) (models.Template, error) {
-	if req.Type != "workspace" && req.Type != "note" {
-		return models.Template{}, errors.New("type must be 'workspace' or 'note'")
+	if req.Type != "workspace" {
+		return models.Template{}, errors.New("type must be 'workspace'")
 	}
 	if strings.TrimSpace(req.Name) == "" {
 		return models.Template{}, errors.New("template name is required")
@@ -28,46 +28,25 @@ func (s *TemplateService) CreateTemplate(ctx context.Context, creatorID int64, r
 	}
 
 	// Verify ownership and capture snapshot
-	var snapshot models.TemplateSnapshot
-	if req.Type == "workspace" {
-		w, err := s.store.GetWorkspace(ctx, req.SourceID)
-		if err != nil {
-			return models.Template{}, errors.New("workspace not found")
-		}
-		if w.UserID != creatorID {
-			return models.Template{}, errors.New("access denied")
-		}
+	w, err := s.store.GetWorkspace(ctx, req.SourceID)
+	if err != nil {
+		return models.Template{}, errors.New("workspace not found")
+	}
+	if w.UserID != creatorID {
+		return models.Template{}, errors.New("access denied")
+	}
 
-		// Get all notes in workspace
-		notes, err := s.store.ListNotesByWorkspace(ctx, req.SourceID)
-		if err != nil {
-			return models.Template{}, err
-		}
+	// Get all notes in workspace
+	notes, err := s.store.ListNotesByWorkspace(ctx, req.SourceID)
+	if err != nil {
+		return models.Template{}, err
+	}
 
-		snapshot = models.TemplateSnapshot{
-			WorkspaceID: w.ID,
-			Name:        w.Name,
-			Description: w.Description,
-			Notes:       notes,
-		}
-	} else {
-		n, err := s.store.GetNote(ctx, req.SourceID)
-		if err != nil {
-			return models.Template{}, errors.New("note not found")
-		}
-
-		// Verify workspace ownership
-		w, err := s.store.GetWorkspace(ctx, n.WorkspaceID)
-		if err != nil {
-			return models.Template{}, errors.New("workspace not found")
-		}
-		if w.UserID != creatorID {
-			return models.Template{}, errors.New("access denied")
-		}
-
-		snapshot = models.TemplateSnapshot{
-			Note: &n,
-		}
+	snapshot := models.TemplateSnapshot{
+		WorkspaceID: w.ID,
+		Name:        w.Name,
+		Description: w.Description,
+		Notes:       notes,
 	}
 
 	snapshotJSON, err := json.Marshal(snapshot)
@@ -121,7 +100,7 @@ func (s *TemplateService) UpdateTemplate(ctx context.Context, creatorID int64, t
 	return s.store.UpdateTemplate(ctx, templateID, t)
 }
 
-// UpdateTemplateContent re-snapshots the current state of the source workspace/note
+// UpdateTemplateContent re-snapshots the current state of the source workspace
 func (s *TemplateService) UpdateTemplateContent(ctx context.Context, creatorID int64, templateID int64) (models.Template, error) {
 	t, err := s.store.GetTemplate(ctx, templateID)
 	if err != nil {
@@ -133,44 +112,24 @@ func (s *TemplateService) UpdateTemplateContent(ctx context.Context, creatorID i
 	}
 
 	// Capture new snapshot
-	var snapshot models.TemplateSnapshot
-	if t.Type == "workspace" {
-		w, err := s.store.GetWorkspace(ctx, t.SourceID)
-		if err != nil {
-			return models.Template{}, errors.New("source workspace not found")
-		}
-		if w.UserID != creatorID {
-			return models.Template{}, errors.New("access denied")
-		}
+	w, err := s.store.GetWorkspace(ctx, t.SourceID)
+	if err != nil {
+		return models.Template{}, errors.New("source workspace not found")
+	}
+	if w.UserID != creatorID {
+		return models.Template{}, errors.New("access denied")
+	}
 
-		notes, err := s.store.ListNotesByWorkspace(ctx, t.SourceID)
-		if err != nil {
-			return models.Template{}, err
-		}
+	notes, err := s.store.ListNotesByWorkspace(ctx, t.SourceID)
+	if err != nil {
+		return models.Template{}, err
+	}
 
-		snapshot = models.TemplateSnapshot{
-			WorkspaceID: w.ID,
-			Name:        w.Name,
-			Description: w.Description,
-			Notes:       notes,
-		}
-	} else {
-		n, err := s.store.GetNote(ctx, t.SourceID)
-		if err != nil {
-			return models.Template{}, errors.New("source note not found")
-		}
-
-		w, err := s.store.GetWorkspace(ctx, n.WorkspaceID)
-		if err != nil {
-			return models.Template{}, errors.New("workspace not found")
-		}
-		if w.UserID != creatorID {
-			return models.Template{}, errors.New("access denied")
-		}
-
-		snapshot = models.TemplateSnapshot{
-			Note: &n,
-		}
+	snapshot := models.TemplateSnapshot{
+		WorkspaceID: w.ID,
+		Name:        w.Name,
+		Description: w.Description,
+		Notes:       notes,
 	}
 
 	snapshotJSON, err := json.Marshal(snapshot)
@@ -247,7 +206,7 @@ func (s *TemplateService) SetTemplateHidden(ctx context.Context, adminID int64, 
 	return s.store.UpdateTemplateHidden(ctx, templateID, isHidden)
 }
 
-// CloneTemplate clones a template into the user's workspace
+// CloneTemplate clones a workspace template into the user's account
 func (s *TemplateService) CloneTemplate(ctx context.Context, userID int64, templateID int64, req models.CloneTemplateRequest) (*models.Workspace, *models.Note, error) {
 	t, err := s.store.GetTemplate(ctx, templateID)
 	if err != nil {
@@ -258,9 +217,6 @@ func (s *TemplateService) CloneTemplate(ctx context.Context, userID int64, templ
 	if t.IsHidden {
 		return nil, nil, errors.New("template not found")
 	}
-	if t.Visibility == "link" {
-		// For link-only, we just need the ID - no additional checks needed
-	}
 
 	// Parse snapshot
 	var snapshot models.TemplateSnapshot
@@ -268,62 +224,29 @@ func (s *TemplateService) CloneTemplate(ctx context.Context, userID int64, templ
 		return nil, nil, err
 	}
 
-	if t.Type == "workspace" {
-		// Create new workspace
-		w, err := s.store.CreateWorkspace(ctx, models.Workspace{
-			Name:        snapshot.Name + " (Copy)",
-			Description: snapshot.Description,
-			UserID:      userID,
-		})
-		if err != nil {
-			return nil, nil, err
-		}
+	// Create new workspace
+	w, err := s.store.CreateWorkspace(ctx, models.Workspace{
+		Name:        snapshot.Name + " (Copy)",
+		Description: snapshot.Description,
+		UserID:      userID,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
 
-		// Clone all notes
-		for _, note := range snapshot.Notes {
-			_, err := s.store.CreateNote(ctx, models.Note{
-				WorkspaceID: w.ID,
-				Title:       note.Title,
-				Content:     note.Content,
-				CreatedBy:   userID,
-			})
-			if err != nil {
-				// Log error but continue
-				continue
-			}
-		}
-
-		return &w, nil, nil
-	} else {
-		// Clone single note
-		if req.TargetWorkspaceID == 0 {
-			return nil, nil, errors.New("target_workspace_id is required for note templates")
-		}
-
-		// Verify workspace ownership
-		w, err := s.store.GetWorkspace(ctx, req.TargetWorkspaceID)
-		if err != nil {
-			return nil, nil, errors.New("target workspace not found")
-		}
-		if w.UserID != userID {
-			return nil, nil, errors.New("access denied")
-		}
-
-		note := snapshot.Note
-		if note == nil {
-			return nil, nil, errors.New("invalid template snapshot")
-		}
-
-		newNote, err := s.store.CreateNote(ctx, models.Note{
-			WorkspaceID: req.TargetWorkspaceID,
+	// Clone all notes
+	for _, note := range snapshot.Notes {
+		_, err := s.store.CreateNote(ctx, models.Note{
+			WorkspaceID: w.ID,
 			Title:       note.Title,
 			Content:     note.Content,
 			CreatedBy:   userID,
 		})
 		if err != nil {
-			return nil, nil, err
+			// Log error but continue
+			continue
 		}
-
-		return nil, &newNote, nil
 	}
+
+	return &w, nil, nil
 }

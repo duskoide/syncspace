@@ -106,10 +106,10 @@ export const api = {
     request(`/api/templates/${id}/update-content`, { method: "POST" }),
   deleteTemplate: (id: number) =>
     request(`/api/templates/${id}`, { method: "DELETE" }),
-  cloneTemplate: (id: number, targetWorkspaceId?: number) =>
+  cloneTemplate: (id: number) =>
     request(`/api/templates/${id}/clone`, { 
       method: "POST", 
-      body: JSON.stringify({ target_workspace_id: targetWorkspaceId }) 
+      body: JSON.stringify({}) 
     }),
 
   // Note Images

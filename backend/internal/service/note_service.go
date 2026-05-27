@@ -136,7 +136,7 @@ func sanitizeHTML(input string) string {
 	output = onEventUnquotedRe.ReplaceAllString(output, "")
 
 	// Remove javascript: URLs
-	jsURLRe := regexp.MustCompile(`(?i)javascript:\s*[^"']*`)
+	jsURLRe := regexp.MustCompile(`(?i)javascript:[^"]*`)
 	output = jsURLRe.ReplaceAllString(output, "")
 
 	return output

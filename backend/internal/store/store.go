@@ -116,7 +116,7 @@ CREATE INDEX IF NOT EXISTS idx_notes_created_by ON notes(created_by);
 
 CREATE TABLE IF NOT EXISTS templates (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
-	type TEXT NOT NULL CHECK(type IN ('workspace', 'note')),
+	type TEXT NOT NULL DEFAULT 'workspace',
 	source_id INTEGER NOT NULL,
 	creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
 	name TEXT NOT NULL,
@@ -129,7 +129,6 @@ CREATE TABLE IF NOT EXISTS templates (
 );
 CREATE INDEX IF NOT EXISTS idx_templates_creator ON templates(creator_id);
 CREATE INDEX IF NOT EXISTS idx_templates_visibility ON templates(visibility);
-CREATE INDEX IF NOT EXISTS idx_templates_type ON templates(type);
 
 CREATE TABLE IF NOT EXISTS note_images (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,

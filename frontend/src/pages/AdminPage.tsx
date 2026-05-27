@@ -274,8 +274,8 @@ export function AdminPage() {
                       <strong>{t.name}</strong>
                     </div>
                     <div className="adminTableCell">
-                      <span className={`tag tag-${t.type === "workspace" ? "info" : "success"}`}>
-                        {t.type}
+                      <span className="tag tag-info">
+                        workspace
                       </span>
                     </div>
                     <div className="adminTableCell metaText">{t.creator_name}</div>

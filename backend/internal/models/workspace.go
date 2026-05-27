@@ -54,13 +54,12 @@ type NoteImage struct {
 	CreatedAt    time.Time `json:"created_at"`
 }
 
-// TemplateSnapshot is used to store workspace/note content as JSON
+// TemplateSnapshot is used to store workspace content as JSON
 type TemplateSnapshot struct {
-	WorkspaceID int64        `json:"workspace_id,omitempty"`
-	Name        string       `json:"name"`
-	Description string       `json:"description"`
-	Notes       []Note       `json:"notes,omitempty"`
-	Note        *Note        `json:"note,omitempty"`
+	WorkspaceID int64  `json:"workspace_id,omitempty"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Notes       []Note `json:"notes,omitempty"`
 }
 
 // CreateWorkspaceRequest represents a request to create a workspace

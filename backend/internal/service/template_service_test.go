@@ -9,47 +9,10 @@ import (
 
 // ==================== Create Template ====================
 
-func TestCreateNoteTemplate(t *testing.T) {
-	svc := setupTestService(t)
-	user := registerUser(t, svc, "tplnote@example.com", "password123", "TplNote", "creator")
-	ws := createWorkspace(t, svc, user.ID, "Template WS")
-	note, _ := svc.NoteService.CreateNote(context.Background(), user.ID, models.CreateNoteRequest{
-		WorkspaceID: ws.ID,
-		Title:       "Template Note",
-	})
-	svc.NoteService.UpdateNote(context.Background(), user.ID, note.ID, models.UpdateNoteRequest{
-		Title:   "Template Note",
-		Content: "<p>Template content</p>",
-	})
-
-	tpl, err := svc.TemplateService.CreateTemplate(context.Background(), user.ID, models.CreateTemplateRequest{
-		Type:       "note",
-		SourceID:   note.ID,
-		Name:       "My Note Template",
-		Description: "A template note",
-		Visibility: "public",
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tpl.Name != "My Note Template" {
-		t.Fatalf("expected name 'My Note Template', got %s", tpl.Name)
-	}
-	if tpl.Type != "note" {
-		t.Fatalf("expected type 'note', got %s", tpl.Type)
-	}
-	if tpl.Visibility != "public" {
-		t.Fatalf("expected visibility 'public', got %s", tpl.Visibility)
-	}
-	if tpl.ContentSnapshot == "" {
-		t.Fatal("expected non-empty content snapshot")
-	}
-}
-
 func TestCreateWorkspaceTemplate(t *testing.T) {
 	svc := setupTestService(t)
 	user := registerUser(t, svc, "tplws@example.com", "password123", "TplWS", "creator")
-	ws := createWorkspace(t, svc, user.ID, "Template WS2")
+	ws := createWorkspace(t, svc, user.ID, "Template WS")
 	svc.NoteService.CreateNote(context.Background(), user.ID, models.CreateNoteRequest{
 		WorkspaceID: ws.ID,
 		Title:       "WS Note 1",
@@ -60,11 +23,11 @@ func TestCreateWorkspaceTemplate(t *testing.T) {
 	})
 
 	tpl, err := svc.TemplateService.CreateTemplate(context.Background(), user.ID, models.CreateTemplateRequest{
-		Type:       "workspace",
-		SourceID:   ws.ID,
-		Name:       "My WS Template",
+		Type:        "workspace",
+		SourceID:    ws.ID,
+		Name:        "My WS Template",
 		Description: "A template workspace",
-		Visibility: "link",
+		Visibility:  "link",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -82,12 +45,12 @@ func TestCreateTemplateInvalidType(t *testing.T) {
 	user := registerUser(t, svc, "tplinv@example.com", "password123", "TplInv", "creator")
 
 	_, err := svc.TemplateService.CreateTemplate(context.Background(), user.ID, models.CreateTemplateRequest{
-		Type:     "invalid",
+		Type:     "note",
 		SourceID: 1,
-		Name:     "Bad Type",
+		Name:     "Note Type",
 	})
 	if err == nil {
-		t.Fatal("expected error for invalid type")
+		t.Fatal("expected error for note type")
 	}
 }
 
@@ -499,63 +462,6 @@ func TestCloneWorkspaceTemplate(t *testing.T) {
 	}
 }
 
-func TestCloneNoteTemplate(t *testing.T) {
-	svc := setupTestService(t)
-	creator := registerUser(t, svc, "cn1@example.com", "password123", "CN1", "creator")
-	user := registerUser(t, svc, "cn2@example.com", "password123", "CN2", "user")
-	ws := createWorkspace(t, svc, creator.ID, "CN1 WS")
-	note, _ := svc.NoteService.CreateNote(context.Background(), creator.ID, models.CreateNoteRequest{
-		WorkspaceID: ws.ID,
-		Title:       "Template Note",
-	})
-	svc.NoteService.UpdateNote(context.Background(), creator.ID, note.ID, models.UpdateNoteRequest{
-		Title:   "Template Note",
-		Content: "<p>Note content</p>",
-	})
-
-	tpl, _ := svc.TemplateService.CreateTemplate(context.Background(), creator.ID, models.CreateTemplateRequest{
-		Type:     "note",
-		SourceID: note.ID,
-		Name:     "Clonable Note",
-	})
-
-	targetWS := createWorkspace(t, svc, user.ID, "Target WS")
-	_, cloned, err := svc.TemplateService.CloneTemplate(context.Background(), user.ID, tpl.ID, models.CloneTemplateRequest{
-		TargetWorkspaceID: targetWS.ID,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if cloned == nil {
-		t.Fatal("expected cloned note")
-	}
-	if cloned.Title != "Template Note" {
-		t.Fatalf("expected title 'Template Note', got %s", cloned.Title)
-	}
-}
-
-func TestCloneNoteTemplateNoTarget(t *testing.T) {
-	svc := setupTestService(t)
-	creator := registerUser(t, svc, "cnt1@example.com", "password123", "CNT1", "creator")
-	user := registerUser(t, svc, "cnt2@example.com", "password123", "CNT2", "user")
-	ws := createWorkspace(t, svc, creator.ID, "CNT1 WS")
-	note, _ := svc.NoteService.CreateNote(context.Background(), creator.ID, models.CreateNoteRequest{
-		WorkspaceID: ws.ID,
-		Title:       "No Target",
-	})
-
-	tpl, _ := svc.TemplateService.CreateTemplate(context.Background(), creator.ID, models.CreateTemplateRequest{
-		Type:     "note",
-		SourceID: note.ID,
-		Name:     "No Target Template",
-	})
-
-	_, _, err := svc.TemplateService.CloneTemplate(context.Background(), user.ID, tpl.ID, models.CloneTemplateRequest{})
-	if err == nil {
-		t.Fatal("expected error for note template without target workspace")
-	}
-}
-
 func TestCloneHiddenTemplateDenied(t *testing.T) {
 	svc := setupTestService(t)
 	creator := registerUser(t, svc, "chd1@example.com", "password123", "CHD1", "creator")
@@ -575,54 +481,26 @@ func TestCloneHiddenTemplateDenied(t *testing.T) {
 	}
 }
 
-func TestCloneNoteTemplateAccessDenied(t *testing.T) {
-	svc := setupTestService(t)
-	creator := registerUser(t, svc, "cnd1@example.com", "password123", "CND1", "creator")
-	user := registerUser(t, svc, "cnd2@example.com", "password123", "CND2", "user")
-	ws := createWorkspace(t, svc, creator.ID, "CND1 WS")
-	note, _ := svc.NoteService.CreateNote(context.Background(), creator.ID, models.CreateNoteRequest{
-		WorkspaceID: ws.ID,
-		Title:       "Clone Me",
-	})
-
-	tpl, _ := svc.TemplateService.CreateTemplate(context.Background(), creator.ID, models.CreateTemplateRequest{
-		Type:     "note",
-		SourceID: note.ID,
-		Name:     "Clone Note Template",
-	})
-
-	// user tries to clone into user3's workspace (access denied)
-	user3 := registerUser(t, svc, "cnd3@example.com", "password123", "CND3", "user")
-	ws3 := createWorkspace(t, svc, user3.ID, "User3 WS")
-
-	_, _, err := svc.TemplateService.CloneTemplate(context.Background(), user.ID, tpl.ID, models.CloneTemplateRequest{
-		TargetWorkspaceID: ws3.ID,
-	})
-	if err == nil {
-		t.Fatal("expected access denied for cloning into another user's workspace")
-	}
-}
-
 // ==================== Update Template Content ====================
 
 func TestUpdateTemplateContent(t *testing.T) {
 	svc := setupTestService(t)
 	user := registerUser(t, svc, "utc1@example.com", "password123", "UTC1", "creator")
 	ws := createWorkspace(t, svc, user.ID, "UTC1 WS")
-	note, _ := svc.NoteService.CreateNote(context.Background(), user.ID, models.CreateNoteRequest{
+	svc.NoteService.CreateNote(context.Background(), user.ID, models.CreateNoteRequest{
 		WorkspaceID: ws.ID,
 		Title:       "Evolving Note",
 	})
 
 	tpl, _ := svc.TemplateService.CreateTemplate(context.Background(), user.ID, models.CreateTemplateRequest{
-		Type:     "note",
-		SourceID: note.ID,
+		Type:     "workspace",
+		SourceID: ws.ID,
 		Name:     "Evolving Template",
 	})
 
-	svc.NoteService.UpdateNote(context.Background(), user.ID, note.ID, models.UpdateNoteRequest{
-		Title:   "Evolving Note",
-		Content: "<p>Updated content</p>",
+	svc.NoteService.CreateNote(context.Background(), user.ID, models.CreateNoteRequest{
+		WorkspaceID: ws.ID,
+		Title:       "New Note",
 	})
 
 	updated, err := svc.TemplateService.UpdateTemplateContent(context.Background(), user.ID, tpl.ID)
@@ -639,14 +517,10 @@ func TestUpdateTemplateContentAccessDenied(t *testing.T) {
 	user1 := registerUser(t, svc, "utc2@example.com", "password123", "UTC2", "creator")
 	user2 := registerUser(t, svc, "utc3@example.com", "password123", "UTC3", "creator")
 	ws := createWorkspace(t, svc, user1.ID, "UTC2 WS")
-	note, _ := svc.NoteService.CreateNote(context.Background(), user1.ID, models.CreateNoteRequest{
-		WorkspaceID: ws.ID,
-		Title:       "Protected",
-	})
 
 	tpl, _ := svc.TemplateService.CreateTemplate(context.Background(), user1.ID, models.CreateTemplateRequest{
-		Type:     "note",
-		SourceID: note.ID,
+		Type:     "workspace",
+		SourceID: ws.ID,
 		Name:     "Protected Template",
 	})
 

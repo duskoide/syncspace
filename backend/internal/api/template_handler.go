@@ -130,23 +130,16 @@ func (h *Handler) CloneTemplate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	claims := GetUserFromContext(r.Context())
-	workspace, note, err := h.svc.TemplateService.CloneTemplate(r.Context(), claims.UserID, id, req)
+	workspace, _, err := h.svc.TemplateService.CloneTemplate(r.Context(), claims.UserID, id, req)
 	if err != nil {
 		writeError(w, 400, "validation_error", err.Error())
 		return
 	}
 
-	if workspace != nil {
-		writeJSON(w, 201, map[string]interface{}{
-			"type":      "workspace",
-			"workspace": workspace,
-		})
-	} else {
-		writeJSON(w, 201, map[string]interface{}{
-			"type": "note",
-			"note": note,
-		})
-	}
+	writeJSON(w, 201, map[string]interface{}{
+		"type":      "workspace",
+		"workspace": workspace,
+	})
 }
 
 // ==================== Admin Template Handlers ====================

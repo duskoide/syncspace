@@ -27,7 +27,6 @@ export function TemplateDetailPage() {
   const { user } = useAuth();
   const [template, setTemplate] = useState<Template | null>(null);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [selectedWorkspace, setSelectedWorkspace] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [cloning, setCloning] = useState(false);
   const [error, setError] = useState("");
@@ -42,9 +41,6 @@ export function TemplateDetailPage() {
         ]);
         setTemplate(tData);
         setWorkspaces(wsData);
-        if (wsData.length > 0) {
-          setSelectedWorkspace(wsData[0].id);
-        }
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -56,24 +52,11 @@ export function TemplateDetailPage() {
 
   const handleClone = async () => {
     if (!template) return;
-    
-    if (template.type === "note" && !selectedWorkspace) {
-      setError("Please select a workspace");
-      return;
-    }
 
     try {
       setCloning(true);
-      const result = await api.cloneTemplate(
-        template.id,
-        template.type === "note" ? selectedWorkspace : undefined
-      );
-      
-      if (result.type === "workspace") {
-        navigate(`/workspaces/${result.workspace.id}`);
-      } else {
-        navigate(`/workspaces/${selectedWorkspace}/notes/${result.note.id}`);
-      }
+      const result = await api.cloneTemplate(template.id);
+      navigate(`/workspaces/${result.workspace.id}`);
     } catch (err: any) {
       setError(err.message);
       setCloning(false);
@@ -104,7 +87,7 @@ export function TemplateDetailPage() {
         </p>
 
         <div style={{ display: "flex", gap: 16, marginBottom: 24, fontSize: 14 }}>
-          <span className="text-soft">Type: <strong>{template.type}</strong></span>
+          <span className="text-soft">Type: <strong>workspace</strong></span>
           <span className="text-soft">Created by: <strong>{template.creator_name}</strong></span>
           <span className="text-soft">
             Created: <strong>{new Date(template.created_at).toLocaleDateString()}</strong>
@@ -116,34 +99,14 @@ export function TemplateDetailPage() {
         {!isOwner && (
           <div style={{ padding: 24, background: "rgba(255,255,255,0.05)", borderRadius: 12, marginBottom: 24 }}>
             <h3 style={{ marginTop: 0 }}>Use This Template</h3>
-            
-            {template.type === "note" && (
-              <div className="field" style={{ marginBottom: 16 }}>
-                <label>Select workspace to add note:</label>
-                <select
-                  value={selectedWorkspace}
-                  onChange={(e) => setSelectedWorkspace(parseInt(e.target.value))}
-                >
-                  {workspaces.map((w) => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
 
             <button
               onClick={handleClone}
-              disabled={cloning || (template.type === "note" && workspaces.length === 0)}
+              disabled={cloning}
               className="active"
             >
-              {cloning ? "Cloning..." : template.type === "workspace" ? "Clone Workspace" : "Clone Note"}
+              {cloning ? "Cloning..." : "Clone Workspace"}
             </button>
-            
-            {workspaces.length === 0 && (
-              <p className="text-soft" style={{ marginTop: 8, fontSize: 14 }}>
-                You need to <Link to="/workspaces">create a workspace</Link> first.
-              </p>
-            )}
           </div>
         )}
 

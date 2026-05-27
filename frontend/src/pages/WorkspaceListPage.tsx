@@ -129,7 +129,7 @@ export function WorkspaceListPage() {
       {user?.role === "creator" && (
         <div className="surfaceBlock" style={{ marginTop: 24 }}>
           <h3>Creator Tools</h3>
-          <p>Share your workspaces or notes as templates for others to use.</p>
+          <p>Share your workspaces as templates for others to use.</p>
           <Link to="/templates/my" className="button" style={{ display: "inline-block", marginTop: 8 }}>
             Manage My Templates
           </Link>

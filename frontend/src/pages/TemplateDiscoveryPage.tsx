@@ -86,8 +86,8 @@ export function TemplateDiscoveryPage() {
             <div key={t.id} className="card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <h3 style={{ marginTop: 0, marginBottom: 8 }}>{t.name}</h3>
-                <span className={`tag tag-${t.type === "workspace" ? "info" : "success"}`}>
-                  {t.type}
+                <span className="tag tag-info">
+                  workspace
                 </span>
               </div>
               <p className="text-soft" style={{ marginBottom: 16 }}>

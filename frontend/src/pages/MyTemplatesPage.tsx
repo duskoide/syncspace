@@ -19,23 +19,15 @@ interface Workspace {
   name: string;
 }
 
-interface Note {
-  id: number;
-  title: string;
-  workspace_id: number;
-}
-
 export function MyTemplatesPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState({
-    type: "note" as "workspace" | "note",
     source_id: 0,
     name: "",
     description: "",
@@ -51,14 +43,6 @@ export function MyTemplatesPage() {
       ]);
       setTemplates(templatesData);
       setWorkspaces(workspacesData);
-      
-      // Fetch notes from all workspaces
-      const allNotes: Note[] = [];
-      for (const ws of workspacesData) {
-        const wsNotes = await api.listNotes(ws.id);
-        allNotes.push(...wsNotes.map((n: any) => ({ ...n, workspace_id: ws.id })));
-      }
-      setNotes(allNotes);
     } catch (err) {
       console.error(err);
     } finally {
@@ -74,13 +58,11 @@ export function MyTemplatesPage() {
     fetchData();
     
     // Check for query params to pre-fill create form
-    const type = searchParams.get("type") as "workspace" | "note" | null;
     const sourceId = searchParams.get("source_id");
     
-    if (type && sourceId) {
+    if (sourceId) {
       setCreateForm(prev => ({
         ...prev,
-        type,
         source_id: parseInt(sourceId),
       }));
       setShowCreate(true);
@@ -93,10 +75,15 @@ export function MyTemplatesPage() {
       return;
     }
     try {
-      await api.createTemplate(createForm);
+      await api.createTemplate({
+        type: "workspace",
+        source_id: createForm.source_id,
+        name: createForm.name,
+        description: createForm.description,
+        visibility: createForm.visibility,
+      });
       setShowCreate(false);
       setCreateForm({
-        type: "note",
         source_id: 0,
         name: "",
         description: "",
@@ -140,44 +127,8 @@ export function MyTemplatesPage() {
       {showCreate && (
         <div className="card" style={{ marginBottom: 24 }}>
           <h3 style={{ marginTop: 0 }}>Create New Template</h3>
-          <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div className="field">
-              <label>Template Type</label>
-              <select
-                value={createForm.type}
-                onChange={(e) => {
-                  setCreateForm({
-                    ...createForm,
-                    type: e.target.value as "workspace" | "note",
-                    source_id: 0,
-                  });
-                }}
-              >
-                <option value="note">Single Note</option>
-                <option value="workspace">Entire Workspace</option>
-              </select>
-            </div>
-            <div className="field">
-              <label>Visibility</label>
-              <select
-                value={createForm.visibility}
-                onChange={(e) =>
-                  setCreateForm({
-                    ...createForm,
-                    visibility: e.target.value as "public" | "link",
-                  })
-                }
-              >
-                <option value="public">Public (searchable)</option>
-                <option value="link">Link-only (unlisted)</option>
-              </select>
-            </div>
-          </div>
-
           <div className="field">
-            <label>
-              {createForm.type === "workspace" ? "Select Workspace" : "Select Note"}
-            </label>
+            <label>Select Workspace</label>
             <select
               value={createForm.source_id || ""}
               onChange={(e) =>
@@ -185,17 +136,11 @@ export function MyTemplatesPage() {
               }
             >
               <option value="">-- Select --</option>
-              {createForm.type === "workspace"
-                ? workspaces.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))
-                : notes.map((n) => (
-                    <option key={n.id} value={n.id}>
-                      {n.title} (from workspace {workspaces.find((w) => w.id === n.workspace_id)?.name})
-                    </option>
-                  ))}
+              {workspaces.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -221,6 +166,22 @@ export function MyTemplatesPage() {
             />
           </div>
 
+          <div className="field">
+            <label>Visibility</label>
+            <select
+              value={createForm.visibility}
+              onChange={(e) =>
+                setCreateForm({
+                  ...createForm,
+                  visibility: e.target.value as "public" | "link",
+                })
+              }
+            >
+              <option value="public">Public (searchable)</option>
+              <option value="link">Link-only (unlisted)</option>
+            </select>
+          </div>
+
           <button onClick={handleCreate} className="active">
             Create Template
           </button>
@@ -244,8 +205,8 @@ export function MyTemplatesPage() {
             <div key={t.id} className="card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                 <h3 style={{ marginTop: 0, marginBottom: 8 }}>{t.name}</h3>
-                <span className={`tag tag-${t.type === "workspace" ? "info" : "success"}`}>
-                  {t.type}
+                <span className="tag tag-info">
+                  workspace
                 </span>
               </div>
               <p className="text-soft" style={{ marginBottom: 8 }}>
