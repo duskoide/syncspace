@@ -23,6 +23,18 @@ export function DashboardPage() {
       link: "/workspaces", 
       color: "#7c3aed" 
     },
+    ...(user?.role === "superadmin" ? [{
+      title: "Admin Actions",
+      desc: "Manage users and moderate community templates",
+      link: "/admin",
+      color: "#ffd2cf",
+    }] : []),
+    ...(user?.role === "creator" ? [{
+      title: "Creator Tools",
+      desc: "Manage and share your templates with the community",
+      link: "/templates/my",
+      color: "#efb449",
+    }] : []),
   ];
 
   return (
@@ -54,24 +66,6 @@ export function DashboardPage() {
           </Link>
         ))}
       </div>
-
-      {user?.role === "superadmin" && (
-        <div className="card lower focusCard">
-          <h3 style={{ color: "#ffd2cf", marginBottom: 8 }}>Admin Actions</h3>
-          <Link to="/admin" className="textLink">
-            Manage users and templates
-          </Link>
-        </div>
-      )}
-
-      {user?.role === "creator" && (
-        <div className="card lower focusCard">
-          <h3 style={{ color: "#efb449", marginBottom: 8 }}>Creator Tools</h3>
-          <Link to="/templates/my" className="textLink">
-            Manage your templates
-          </Link>
-        </div>
-      )}
     </div>
   );
 }
