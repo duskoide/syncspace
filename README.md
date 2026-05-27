@@ -91,12 +91,32 @@ docker-compose up --build -d
 6. Start with tunnel profile: `docker-compose --profile tunnel up --build -d`
 
 ### Manual Development
-```bash
-# Backend
-cd backend && go run ./cmd/syncspace
 
-# Frontend
-cd frontend && npm install && npm run dev
+Run both backend and frontend in development mode with a separate database:
+
+```bash
+chmod +x dev.sh
+./dev.sh
+```
+
+| Service | URL | Notes |
+|---------|-----|-------|
+| Frontend | http://localhost:5173 | Vite dev server with HMR |
+| Backend | http://localhost:8081 | Go API with hot-reload disabled |
+| Database | `./dev-data/syncspace.db` | Separate from production |
+
+Production (Docker on `:3000`) stays running — no conflict.
+
+To run services manually in separate terminals:
+
+```bash
+# Terminal 1: Backend
+cd backend
+SYNCSPACE_ADDR=:8081 SYNCSPACE_DB_PATH=../dev-data/syncspace.db go run ./cmd/syncspace
+
+# Terminal 2: Frontend
+cd frontend
+VITE_API_URL=http://localhost:8081 npm run dev
 ```
 
 ## Default Credentials

@@ -55,6 +55,9 @@ data/*.db-*
 data/*.db-journal
 !data/.gitkeep
 
+# Dev data
+dev-data/
+
 # File uploads (user content)
 uploads/
 !uploads/.gitkeep
