@@ -88,3 +88,4 @@ temp/
 *.bak
 *.backup
 backend/syncspace
+backend/syncspace-api
