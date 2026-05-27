@@ -1,7 +1,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, ApiError } from "../services/api";
 
 interface TipTapEditorProps {
@@ -35,6 +35,14 @@ export function TipTapEditor({ content, onChange, placeholder, noteId }: TipTapE
       },
     },
   });
+
+  useEffect(() => {
+    if (!editor) return;
+    const current = editor.getHTML();
+    if (content !== current) {
+      editor.commands.setContent(content, { emitUpdate: false });
+    }
+  }, [editor, content]);
 
   const addImageByUrl = useCallback(() => {
     const url = window.prompt("Enter image URL:");
