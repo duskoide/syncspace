@@ -223,9 +223,6 @@ func (s *Store) GetUserByEmail(ctx context.Context, email string) (models.User, 
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id, email, password_hash, name, role, status, created_at, updated_at FROM users WHERE email = ?`, email).
 		Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Status, &c, &up)
-	if err == sql.ErrNoRows {
-		return u, fmt.Errorf("user not found")
-	}
 	if err != nil {
 		return u, err
 	}
@@ -240,9 +237,6 @@ func (s *Store) GetUserByID(ctx context.Context, id int64) (models.User, error) 
 	err := s.db.QueryRowContext(ctx,
 		`SELECT id, email, password_hash, name, role, status, created_at, updated_at FROM users WHERE id = ?`, id).
 		Scan(&u.ID, &u.Email, &u.PasswordHash, &u.Name, &u.Role, &u.Status, &c, &up)
-	if err == sql.ErrNoRows {
-		return u, fmt.Errorf("user not found")
-	}
 	if err != nil {
 		return u, err
 	}
