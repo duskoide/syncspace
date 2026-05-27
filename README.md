@@ -16,7 +16,7 @@ Education & Learning Tools - Note-Taking & Template Sharing Platform
 
 ### With Docker Compose (Recommended)
 ```bash
-git clone <repo-url> && cd syncspace
+git clone https://github.com/duskoide/syncspace && cd syncspace
 docker-compose up --build -d
 ```
 
