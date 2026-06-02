@@ -10,13 +10,10 @@ Replace `dev.sh` and the implicit "install Go, Node, and sqlite yourself" setup 
 
 ## What changes
 
-A single new file at the repo root: `devbox.json`. It declares:
+Two new files at the repo root:
 
-- The packages the dev environment provides (Go 1.23, Node 20, sqlite)
-- The environment variables the dev services need
-- A shell init hook that prepares `./dev-data/`
-- Two long-running services (backend and frontend)
-- A handful of scripts that wrap common workflows
+- `devbox.json` — declares the dev environment: packages (Go 1.23, Node 20.19.0, sqlite), env vars for the dev services, a shell init hook that prepares `./dev-data/`, and helper scripts (`dev`, `stop`, `test`, `build`, `logs`).
+- `process-compose.yaml` — defines the two long-running dev services (backend and frontend) using the [process-compose](https://github.com/F1bonacc1/process-compose) schema. `devbox services` uses process-compose under the hood and reads this file automatically.
 
 `dev.sh` is deleted. The README's "Manual Development" section is replaced with devbox instructions. `AGENTS.md` is updated to reference devbox instead of `dev.sh`.
 
@@ -24,12 +21,13 @@ No source code in `backend/` or `frontend/src/` is touched. No Dockerfile, no `d
 
 ## `devbox.json`
 
+The devbox.json schema accepts `packages`, `env`, `shell` (with `init_hook` and `scripts`), and `include`. Top-level `services` and `scripts` are NOT part of the devbox.json schema in current devbox and will be silently ignored. Helper scripts go under `shell.scripts`; services go in a separate `process-compose.yaml` file (see next section).
+
 ```jsonc
 {
-  "$schema": "https://raw.githubusercontent.com/jetpack-io/devbox/main/.schema/devbox.schema.json",
   "packages": [
     "go@1.23",
-    "nodejs@20",
+    "nodejs@20.19.0",
     "sqlite"
   ],
   "env": {
@@ -39,35 +37,43 @@ No source code in `backend/` or `frontend/src/` is touched. No Dockerfile, no `d
     "VITE_API_URL": "http://localhost:8081"
   },
   "shell": {
-    "init_hook": "mkdir -p dev-data/uploads"
-  },
-  "services": {
-    "backend": {
-      "process": "mkdir -p ../dev-data && go run ./cmd/syncspace",
-      "directory": "backend"
-    },
-    "frontend": {
-      "process": "npm run dev",
-      "directory": "frontend"
+    "init_hook": "mkdir -p dev-data/uploads",
+    "scripts": {
+      "dev":   "devbox services up",
+      "stop":  "devbox services stop",
+      "test":  "cd backend && go test ./... && cd ../frontend && npx tsc -b",
+      "build": "cd frontend && npm run build",
+      "logs":  "devbox services logs -f"
     }
-  },
-  "scripts": {
-    "dev":    "devbox services up",
-    "stop":   "devbox services stop",
-    "test":   "cd backend && go test ./... && cd ../frontend && npx tsc -b",
-    "build":  "cd frontend && npm run build",
-    "logs":   "devbox services logs -f"
   }
 }
 ```
 
+## `process-compose.yaml`
+
+The devbox services command (`devbox services up`) launches process-compose with the project's `process-compose.yaml` as the process manifest. Devbox exports the env block from `devbox.json` into the process-compose environment, so the env vars are inherited by each service.
+
+```yaml
+version: "0.5"
+
+processes:
+  backend:
+    command: mkdir -p ../dev-data && go run ./cmd/syncspace
+    working_dir: backend
+  frontend:
+    command: npm run dev
+    working_dir: frontend
+```
+
+Note the schema differences from devbox.json: `processes` (not `services`), `command` (not `process`), `working_dir` (not `directory`).
+
 ### Choices explained
 
-- **Packages** — exact versions match the Dockerfiles (`go:1.23-alpine`, `node:20-alpine`). `sqlite` adds the `sqlite3` CLI for poking at the dev DB, mirroring what the README's Docker troubleshooting section suggests.
+- **Packages** — `go@1.23` matches `Dockerfile.backend`. `nodejs@20.19.0` is pinned to a specific 20.x patch because `nodejs@20` (unpinned) resolves to `20.20.2`, which nixpkgs-unstable currently marks insecure and refuses to install. `20.19.0` is the most recent non-insecure 20.x patch. The Dockerfile uses `node:20-alpine` which is on the same Node 20 line. `sqlite` adds the `sqlite3` CLI for poking at the dev DB, mirroring what the README's Docker troubleshooting section suggests.
 - **Env block** — the same env vars that `dev.sh` exported, declared once. `VITE_API_URL` is set in the env block so the Vite dev server picks it up at process start (Vite reads it at boot, not per-request). Path env vars (`SYNCSPACE_DB_PATH`, `SYNCSPACE_UPLOAD_DIR`) use `../dev-data/...` because the backend service runs from the `backend/` working dir; this matches what `dev.sh` does after its `cd backend`.
 - **`shell.init_hook`** — idempotent `mkdir -p dev-data/uploads`. Runs when entering `devbox shell`. The `dev-data/uploads` subdirectory is created lazily by the file service on first upload, but creating it eagerly here keeps the directory tree tidy.
-- **Services** — `process` is the command, `directory` is its working dir. The backend command prefixes `mkdir -p ../dev-data && go run ./cmd/syncspace` because `shell.init_hook` does NOT run for `devbox services up` — the `mkdir` is idempotent and ensures `dev-data/` exists before SQLite tries to open the DB. The frontend uses Vite's dev script and inherits `VITE_API_URL` from the env block. The backend and frontend are siblings, no `depends_on` (CORS allows localhost either way and Vite starts fast enough that the backend's first request works).
-- **Scripts** — `dev` brings both services up with logs in the foreground; Ctrl+C stops both. `stop` works from a separate shell. `test` runs the backend Go suite (the only test layer) then the frontend typecheck. `build` mirrors what the production Dockerfile does. `logs` tails logs from a separate shell.
+- **`shell.scripts`** — `dev` runs `devbox services up` which starts process-compose in the foreground with logs interleaved. Ctrl+C stops both services. `stop` works from a separate shell. `test` runs the backend Go suite (the only test layer) then the frontend typecheck. `build` mirrors what the production Dockerfile does. `logs` tails logs from a separate shell.
+- **Services (in process-compose.yaml)** — `command` is the shell command, `working_dir` is the working directory. The backend command prefixes `mkdir -p ../dev-data && go run ./cmd/syncspace` because `shell.init_hook` does NOT run for `devbox services up` — the `mkdir` is idempotent and ensures `dev-data/` exists before SQLite tries to open the DB. The frontend uses Vite's dev script and inherits `VITE_API_URL` from the devbox env. The backend and frontend are siblings, no `depends_on` (CORS allows localhost either way and Vite starts fast enough that the backend's first request works).
 
 ## User workflow
 
