@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace `dev.sh` and the implicit "install Go + Node + sqlite yourself" setup with a `devbox.json`-driven dev environment at the repo root. Production Docker stack is unchanged.
+**Goal:** Replace `dev.sh` and the implicit "install Go + Node + sqlite yourself" setup with a devbox-driven dev environment at the repo root. Production Docker stack is unchanged.
 
-**Architecture:** A single `devbox.json` declares the toolchain (Go 1.23, Node 20, sqlite), env vars for the two dev services, and two long-running services (backend + frontend) that are started together by `devbox run dev`. `dev.sh` is deleted. README and AGENTS.md are updated to point at devbox.
+**Architecture:** Two config files at the repo root. `devbox.json` declares the toolchain (Go 1.23, Node 20.19.0, sqlite), env vars, and helper scripts (run via `devbox run <name>`). `process-compose.yaml` declares the two long-running dev services (backend + frontend) using the process-compose schema; devbox launches it via `devbox services up`. `dev.sh` is deleted. README and AGENTS.md are updated to point at devbox.
 
-**Tech Stack:** devbox 0.x (Nix-based dev environment), Go 1.23, Node 20, sqlite (CLI).
+**Tech Stack:** devbox 0.x (Nix-based dev environment) + process-compose, Go 1.23, Node 20.19.0, sqlite (CLI).
 
 **Reference spec:** `docs/superpowers/specs/2026-06-02-devbox-dev-environment-design.md`
 
@@ -16,7 +16,8 @@
 
 Files this plan creates or modifies:
 
-- `devbox.json` (Create) — devbox environment config. Packages, env vars, services, scripts.
+- `devbox.json` (Create) — devbox environment config. Packages, env vars, shell init_hook and scripts.
+- `process-compose.yaml` (Create) — process-compose manifest for the two dev services.
 - `README.md` (Modify) — replace the "Manual Development" subsection with a "Local Development (devbox)" subsection.
 - `AGENTS.md` (Modify) — update two bullets that mention `dev.sh`; add one new gotcha about devbox path resolution.
 - `dev.sh` (Delete) — replaced by `devbox run dev`.
@@ -36,10 +37,9 @@ Write `devbox.json` at the repo root with the following exact content:
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/jetpack-io/devbox/main/.schema/devbox.schema.json",
   "packages": [
     "go@1.23",
-    "nodejs@20",
+    "nodejs@20.19.0",
     "sqlite"
   ],
   "env": {
@@ -49,31 +49,22 @@ Write `devbox.json` at the repo root with the following exact content:
     "VITE_API_URL": "http://localhost:8081"
   },
   "shell": {
-    "init_hook": "mkdir -p dev-data/uploads"
-  },
-  "services": {
-    "backend": {
-      "process": "mkdir -p ../dev-data && go run ./cmd/syncspace",
-      "directory": "backend"
-    },
-    "frontend": {
-      "process": "npm run dev",
-      "directory": "frontend"
+    "init_hook": "mkdir -p dev-data/uploads",
+    "scripts": {
+      "dev":   "devbox services up",
+      "stop":  "devbox services stop",
+      "test":  "cd backend && go test ./... && cd ../frontend && npx tsc -b",
+      "build": "cd frontend && npm run build",
+      "logs":  "devbox services logs -f"
     }
-  },
-  "scripts": {
-    "dev": "devbox services up",
-    "stop": "devbox services stop",
-    "test": "cd backend && go test ./... && cd ../frontend && npx tsc -b",
-    "build": "cd frontend && npm run build",
-    "logs": "devbox services logs -f"
   }
 }
 ```
 
 Notes for the implementer:
-- Path env vars (`SYNCSPACE_DB_PATH`, `SYNCSPACE_UPLOAD_DIR`) start with `../dev-data/...` because the backend service's `directory` is `backend/`, so paths are resolved relative to that. This matches what the old `dev.sh` did after its `cd backend`.
-- The backend service's `process` starts with `mkdir -p ../dev-data` because `shell.init_hook` only runs on `devbox shell` entry, not on `devbox services up`. The mkdir is idempotent.
+- The devbox.json schema has no top-level `services` or `scripts` keys. Helper scripts go under `shell.scripts`; services go in a separate `process-compose.yaml` file (Task 2). Do not add `$schema`, `services`, or a top-level `scripts` block.
+- `nodejs@20` (unpinned) resolves to `20.20.2`, which nixpkgs-unstable marks insecure. Pin to `20.19.0`.
+- Path env vars (`SYNCSPACE_DB_PATH`, `SYNCSPACE_UPLOAD_DIR`) start with `../dev-data/...` because the backend process-compose service will run from `backend/`. This matches what the old `dev.sh` did after its `cd backend`.
 
 - [ ] **Step 2: Verify the JSON parses**
 
@@ -82,7 +73,12 @@ Expected: `OK`
 
 If it prints anything else, the JSON is malformed. Fix the syntax and re-run.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Verify devbox accepts the file (no top-level scripts warning)**
+
+Run: `devbox run --list`
+Expected: lists the five scripts — `build`, `dev`, `logs`, `stop`, `test` (alphabetical). If it prints "no scripts defined in devbox.json", the scripts are not under `shell.scripts` — fix it and re-run.
+
+- [ ] **Step 4: Commit**
 
 ```bash
 cd /home/pn/Projects/syncspace
@@ -92,7 +88,50 @@ git commit -m "feat: add devbox.json for local dev environment"
 
 ---
 
-## Task 2: Replace the README's "Manual Development" section
+## Task 2: Create `process-compose.yaml`
+
+**Files:**
+- Create: `process-compose.yaml`
+
+- [ ] **Step 1: Write the file**
+
+Write `process-compose.yaml` at the repo root with the following exact content:
+
+```yaml
+version: "0.5"
+
+processes:
+  backend:
+    command: mkdir -p ../dev-data && go run ./cmd/syncspace
+    working_dir: backend
+  frontend:
+    command: npm run dev
+    working_dir: frontend
+```
+
+Notes for the implementer:
+- process-compose uses `processes` (not `services`), `command` (not `process`), and `working_dir` (not `directory`). The devbox service block uses different field names from the process-compose block.
+- The backend `command` prefixes `mkdir -p ../dev-data` because `shell.init_hook` in `devbox.json` only runs on `devbox shell` entry, not on `devbox services up`. The mkdir is idempotent.
+- `devbox services` exports the env block from `devbox.json` into process-compose, so the services inherit `SYNCSPACE_ADDR`, `SYNCSPACE_DB_PATH`, `SYNCSPACE_UPLOAD_DIR`, and `VITE_API_URL` automatically.
+
+- [ ] **Step 2: Verify devbox sees the services**
+
+Run: `cd /home/pn/Projects/syncspace && devbox services ls 2>&1 | head -20`
+Expected: lists `backend` and `frontend` as available services. (It will likely say "No services currently running" first, then list the registered services.)
+
+If `backend` and `frontend` are not listed, devbox didn't pick up the file. Check that the file is at the repo root, the YAML is valid (run `python3 -c "import yaml; yaml.safe_load(open('process-compose.yaml'))"`), and the `version` is `"0.5"`.
+
+- [ ] **Step 3: Commit**
+
+```bash
+cd /home/pn/Projects/syncspace
+git add process-compose.yaml
+git commit -m "feat: add process-compose.yaml for backend and frontend dev services"
+```
+
+---
+
+## Task 3: Replace the README's "Manual Development" section
 
 **Files:**
 - Modify: `README.md` (the block from `### Manual Development` through the end of the "To run services manually in separate terminals" code block, currently lines 93-120)
@@ -181,7 +220,7 @@ git commit -m "docs: replace Manual Development section with devbox instructions
 
 ---
 
-## Task 3: Update `AGENTS.md` to reference devbox
+## Task 4: Update `AGENTS.md` to reference devbox
 
 **Files:**
 - Modify: `AGENTS.md` (two bullets in the "Layout" and "Commands" sections)
@@ -197,7 +236,7 @@ In `AGENTS.md`, find the bullet:
 Replace it with:
 
 ```markdown
-- `devbox.json` — Nix-based dev environment. Same ports and DB layout as before (`:8081` / `:5173` / `./dev-data/`), no Docker required locally.
+- `devbox.json` + `process-compose.yaml` — devbox-managed dev environment. Backend `:8081` + frontend `:5173`, separate DB at `./dev-data/syncspace.db`. No Docker required locally. `process-compose.yaml` declares the two long-running services that `devbox services up` launches.
 ```
 
 - [ ] **Step 2: Update the Commands bullet**
@@ -231,7 +270,7 @@ git commit -m "docs: update AGENTS.md to reference devbox instead of dev.sh"
 
 ---
 
-## Task 4: Add a devbox gotcha to AGENTS.md
+## Task 5: Add a devbox gotcha to AGENTS.md
 
 **Files:**
 - Modify: `AGENTS.md` (append a bullet to the "Things an agent typically gets wrong here" section)
@@ -245,7 +284,7 @@ In `AGENTS.md`, find the closing list of that section. It ends with the bullet a
 Add a new bullet at the end of the list:
 
 ```markdown
-- `devbox.json` services run with `directory` as the working dir, so path env vars (`SYNCSPACE_DB_PATH`, `SYNCSPACE_UPLOAD_DIR`) are resolved relative to that dir, not the repo root. The backend service runs from `backend/`, so paths use `../dev-data/...`. `shell.init_hook` runs only on `devbox shell` entry, not on `devbox services up` — that's why the backend service's `process` starts with `mkdir -p ../dev-data`.
+- The `devbox.json` schema has no top-level `services` or `scripts` keys — both are silently ignored. Helper scripts go under `shell.scripts` and run via `devbox run <name>`. Long-running services go in a separate `process-compose.yaml` file (process-compose uses `processes`, `command`, `working_dir` — not `services`, `process`, `directory`). Path env vars in `devbox.json` are resolved relative to the service's `working_dir`, not the repo root, so the backend service (working_dir `backend/`) needs `../dev-data/...`. `shell.init_hook` runs only on `devbox shell` entry, not on `devbox services up` — that's why the backend's `command` in process-compose starts with `mkdir -p ../dev-data`.
 ```
 
 - [ ] **Step 3: Commit**
@@ -253,12 +292,12 @@ Add a new bullet at the end of the list:
 ```bash
 cd /home/pn/Projects/syncspace
 git add AGENTS.md
-git commit -m "docs: document devbox path-resolution gotcha in AGENTS.md"
+git commit -m "docs: document devbox + process-compose schema gotcha in AGENTS.md"
 ```
 
 ---
 
-## Task 5: Delete `dev.sh`
+## Task 6: Delete `dev.sh`
 
 **Files:**
 - Delete: `dev.sh`
@@ -292,7 +331,7 @@ git commit -m "chore: remove dev.sh, replaced by devbox run dev"
 
 ---
 
-## Task 6: Final verification
+## Task 7: Final verification
 
 **Files:** none (read-only checks)
 
@@ -313,14 +352,15 @@ Expected: `nothing to commit, working tree clean` (or only untracked files like 
 
 - [ ] **Step 4: Review the commit log**
 
-Run: `git log --oneline -10`
-Expected: the five new commits from this plan appear at the top:
+Run: `git log --oneline -12`
+Expected: the six new commits from this plan appear at the top:
 1. `feat: add devbox.json for local dev environment`
-2. `docs: replace Manual Development section with devbox instructions`
-3. `docs: update AGENTS.md to reference devbox instead of dev.sh`
-4. `docs: document devbox path-resolution gotcha in AGENTS.md`
-5. `chore: remove dev.sh, replaced by devbox run dev`
+2. `feat: add process-compose.yaml for backend and frontend dev services`
+3. `docs: replace Manual Development section with devbox instructions`
+4. `docs: update AGENTS.md to reference devbox instead of dev.sh`
+5. `docs: document devbox + process-compose schema gotcha in AGENTS.md`
+6. `chore: remove dev.sh, replaced by devbox run dev`
 
-(Plus the earlier `docs: add design spec for devbox-based dev environment` commit if you count the spec.)
+(Plus the earlier `docs: add design spec for devbox-based dev environment` and `docs(spec): fix devbox.json schema, add process-compose.yaml, pin nodejs@20.19.0` commits if you count the spec history.)
 
 If any step fails, stop and fix before claiming the plan is done.
