@@ -6,7 +6,7 @@
 
 ## Goal
 
-Replace `dev.sh` and the implicit "install Go, Node, and sqlite yourself" setup with a reproducible [devbox](https://www.jetpack.io/devbox) environment at the repo root. The Docker production stack stays exactly as it is.
+Replace `dev.sh` and the implicit "install Go, Node, and sqlite yourself" setup with a reproducible [devbox](https://www.jetify.com/devbox) environment at the repo root. The Docker production stack stays exactly as it is.
 
 ## What changes
 
@@ -79,7 +79,7 @@ Note the schema differences from devbox.json: `processes` (not `services`), `com
 
 | Step | Command | Notes |
 |------|---------|-------|
-| One-time | Install devbox: `curl -fsSL https://get.jetpack.io/devbox \| bash` | Per the official devbox install page. |
+| One-time | Install devbox: `curl -fsSL https://get.jetify.com/devbox \| bash` | Per the official devbox install page. |
 | First run | `devbox run dev` | Triggers `devbox install` automatically on first invocation. |
 | Daily | `devbox run dev` | Starts backend on `:8081` and frontend on `:5173` with logs interleaved. Ctrl+C stops both. |
 | Stop from another shell | `devbox run stop` | Useful if the foreground process is in a different terminal. |

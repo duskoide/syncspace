@@ -180,7 +180,7 @@ Replace the entire block with:
 ```markdown
 ### Local Development (devbox)
 
-SyncSpace uses [devbox](https://www.jetpack.io/devbox) to provide a reproducible dev environment. Install it once: `curl -fsSL https://get.jetpack.io/devbox | bash`.
+SyncSpace uses [devbox](https://www.jetify.com/devbox) to provide a reproducible dev environment. Install it once: `curl -fsSL https://get.jetify.com/devbox | bash`.
 
 ```bash
 devbox run dev
