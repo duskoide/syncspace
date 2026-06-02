@@ -1,0 +1,23 @@
+{
+  "packages": [
+    "go@1.23",
+    "nodejs@20.19.0",
+    "sqlite"
+  ],
+  "env": {
+    "SYNCSPACE_ADDR": ":8081",
+    "SYNCSPACE_DB_PATH": "../dev-data/syncspace.db",
+    "SYNCSPACE_UPLOAD_DIR": "../dev-data/uploads",
+    "VITE_API_URL": "http://localhost:8081"
+  },
+  "shell": {
+    "init_hook": "mkdir -p dev-data/uploads",
+    "scripts": {
+      "dev":   "devbox services up",
+      "stop":  "devbox services stop",
+      "test":  "cd backend && go test ./... && cd ../frontend && npx tsc -b",
+      "build": "cd frontend && npm run build",
+      "logs":  "devbox services logs -f"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+version: "0.5"
+
+processes:
+  backend:
+    command: mkdir -p ../dev-data && go run ./cmd/syncspace
+    working_dir: backend
+  frontend:
+    command: npm run dev
+    working_dir: frontend

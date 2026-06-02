@@ -67,6 +67,10 @@ uploads/
 docker-compose.override.yml
 docker-compose.prod.yml
 
+# Devbox (generated lockfile; see docs/superpowers/specs/2026-06-02-devbox-dev-environment-design.md)
+devbox.lock
+.devbox/
+
 # Logs
 *.log
 logs/
