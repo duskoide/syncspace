@@ -49,6 +49,8 @@ docker-compose down -v
 docker-compose restart backend
 ```
 
+For local development without Docker, see [Local Development (devbox)](#local-development-devbox) below.
+
 ### Data Persistence
 - **Database:** Stored in `./data/syncspace.db` (SQLite)
 - **Uploads:** Files stored in `./data/uploads/`
@@ -90,34 +92,29 @@ docker-compose up --build -d
 5. Paste the token in `.env` as `TUNNEL_TOKEN=your_token_here`
 6. Start with tunnel profile: `docker-compose --profile tunnel up --build -d`
 
-### Manual Development
+### Local Development (devbox)
 
-Run both backend and frontend in development mode with a separate database:
+SyncSpace uses [devbox](https://www.jetify.com/devbox) to provide a reproducible dev environment. Install it once: `curl -fsSL https://get.jetify.com/devbox | bash`.
 
 ```bash
-chmod +x dev.sh
-./dev.sh
+devbox run dev
 ```
 
 | Service | URL | Notes |
 |---------|-----|-------|
 | Frontend | http://localhost:5173 | Vite dev server with HMR |
-| Backend | http://localhost:8081 | Go API with hot-reload disabled |
-| Database | `./dev-data/syncspace.db` | Separate from production |
+| Backend | http://localhost:8081 | Go API (no hot-reload) |
+| Database | `./dev-data/syncspace.db` | Auto-created, separate from production |
+
+Other scripts:
+
+- `devbox run stop` — stop both services
+- `devbox run test` — backend Go tests + frontend typecheck
+- `devbox run build` — production frontend build
+- `devbox run logs` — stream combined logs from both services
+- `devbox shell` — open a shell with Go/Node/sqlite on PATH
 
 Production (Docker on `:3000`) stays running — no conflict.
-
-To run services manually in separate terminals:
-
-```bash
-# Terminal 1: Backend
-cd backend
-SYNCSPACE_ADDR=:8081 SYNCSPACE_DB_PATH=../dev-data/syncspace.db go run ./cmd/syncspace
-
-# Terminal 2: Frontend
-cd frontend
-VITE_API_URL=http://localhost:8081 npm run dev
-```
 
 ## Default Credentials
 
