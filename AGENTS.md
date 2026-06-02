@@ -7,7 +7,7 @@ Compact notes for OpenCode sessions working in `syncspace`.
 - `backend/` — Go 1.23 REST API. Module path is `syncspace/backend` (not `backend`). Entry: `backend/cmd/syncspace/main.go`.
 - `frontend/` — React 18 + Vite + TypeScript SPA. Uses TipTap editor and React Router v7.
 - `docker-compose.yml` — backend (`:8080` internal), frontend (`:3000` host → `:80` internal), optional `cloudflared` (profile `tunnel`).
-- `dev.sh` — local dev: backend `:8081` + frontend `:5173`, separate DB at `./dev-data/syncspace.db`. Does not conflict with the Docker stack on `:3000`.
+- `devbox.json` + `process-compose.yaml` — devbox-managed dev environment. Backend `:8081` + frontend `:5173`, separate DB at `./dev-data/syncspace.db`. No Docker required locally. `process-compose.yaml` declares the two long-running services that `devbox services up` launches.
 
 ## Backend quirks
 
@@ -33,7 +33,7 @@ Compact notes for OpenCode sessions working in `syncspace`.
 
 ## Commands
 
-- Dev (both services, separate DB): `./dev.sh` from repo root.
+- Dev (both services, separate DB): `devbox run dev` from repo root.
 - Backend tests: `cd backend && go test ./...` (~40s, all in `internal/service`).
 - Run a single test: `cd backend && go test ./internal/service/ -run TestName -v`.
 - Frontend typecheck + build: `cd frontend && npx tsc -b && npx vite build`.
