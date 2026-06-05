@@ -33,7 +33,6 @@ frontend/.cache/
 .well-known/
 
 # Backend - Go
-backend/bin/
 backend/vendor/
 backend/*.exe
 backend/*.exe~

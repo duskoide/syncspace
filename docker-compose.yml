@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile.backend
     restart: unless-stopped
     volumes:
+      - ./backend/bin/syncspace:/app/syncspace:ro
       - ./data:/data
       - ./uploads:/uploads
     environment:
