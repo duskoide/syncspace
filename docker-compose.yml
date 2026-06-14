@@ -5,9 +5,8 @@ services:
       dockerfile: Dockerfile.backend
     restart: unless-stopped
     volumes:
-      - ./backend/bin/syncspace:/app/syncspace:ro
-      - ./data:/data
-      - ./uploads:/uploads
+      - ./data:/data:Z
+      - ./uploads:/uploads:Z
     environment:
       - SYNCSPACE_ADDR=:8080
       - SYNCSPACE_DB_PATH=/data/syncspace.db

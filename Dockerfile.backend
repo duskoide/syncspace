@@ -1,10 +1,12 @@
-# Minimal Backend Dockerfile
-# Binary is built locally and volume-mounted — no build stage needed.
+# Backend Dockerfile
+# Binary is built locally and copied into the image.
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
 WORKDIR /app
 
-# Create directories for data and uploads
+COPY backend/bin/syncspace ./syncspace
+RUN chmod +x ./syncspace
+
 RUN mkdir -p /data /uploads
 
 EXPOSE 8080
